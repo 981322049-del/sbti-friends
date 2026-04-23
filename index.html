@@ -161,6 +161,8 @@
     background: var(--border); color: var(--sub); transition: all .2s;
   }
   .option-btn.selected .option-letter { background: var(--blue); color: #fff; }
+  .option-btn.locked { cursor: not-allowed; opacity: .85; }
+  .option-btn.locked:hover { border-color: var(--border); background: #f8fafc; }
 
   /* 好友视角对比 */
   .option-result-bar { display: none; }
@@ -520,6 +522,10 @@
       <div class="stat-label">好友已作答</div>
     </div>
     <div class="stat-card">
+      <div class="stat-num" id="stat-paid">0</div>
+      <div class="stat-label">已付费解锁</div>
+    </div>
+    <div class="stat-card">
       <div class="stat-num" id="stat-agree">—</div>
       <div class="stat-label">平均吻合率</div>
     </div>
@@ -549,6 +555,15 @@
         <p style="margin-top:12px;font-size:14px">等待好友作答...</p>
       </div>
     </div>
+  </div>
+
+  <!-- 逐题投票详情（收起） -->
+  <div class="result-section" id="owner-detail-section" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="section-title" style="margin:0">📊 逐题投票分布</div>
+      <button class="btn btn-gray" style="padding:8px 16px;font-size:13px" onclick="toggleDetailSection()">收起 ↑</button>
+    </div>
+    <div id="owner-vote-detail-list"></div>
   </div>
 
   <div style="height:80px"></div>
@@ -1133,6 +1148,7 @@ async function refreshOwnerVotes() {
   const myAnswers = JSON.parse(localStorage.getItem('sbti_owner_answers_' + uid) || '[]');
 
   document.getElementById('stat-friends').textContent = total;
+  document.getElementById('stat-paid').textContent = STATE.ownerData.paidCount || 0;
 
   if (total === 0) {
     document.getElementById('stat-agree').textContent = '—';
@@ -1145,6 +1161,34 @@ async function refreshOwnerVotes() {
       </div>`;
     return;
   }
+
+  // 好友参与情况列表
+  const friendsHtml = friends.map((f, fi) => {
+    const r = calcSBTIType(f.answers);
+    const matchPct = Math.round(f.answers.filter((a, i) => a === myAnswers[i]).length / myAnswers.length * 100);
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:36px;height:36px;border-radius:50%;background:${f.anon?'#94a3b8':('#4e6ef2')};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">
+          ${f.anon ? '?' : f.name.slice(0,1)}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${f.anon ? '匿名用户' : f.name}</div>
+          <div style="font-size:12px;color:var(--sub)">猜测：${r.type} ${TYPE_INFO[r.type]?.emoji || ''} · 吻合率 ${matchPct}%</div>
+        </div>
+        <div style="flex-shrink:0">
+          ${f.paid ? '<span style="background:#fef3c7;color:#d97706;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">💰 已付费</span>' : '<span style="background:#f1f5f9;color:var(--sub);padding:4px 10px;border-radius:20px;font-size:12px">待解锁</span>'}
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('owner-vote-list').innerHTML = `
+    <div style="background:var(--card);border-radius:16px;padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">👥 好友参与情况</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">${total} 人已作答 · ${STATE.ownerData.paidCount || 0} 人已付费解锁</div>
+      ${friendsHtml}
+      ${total > 0 ? `<button class="btn btn-gray" style="width:100%;margin-top:8px;font-size:13px" onclick="expandDetail()">📊 查看逐题投票分布 ↓</button>` : ''}
+    </div>
+  `;
 
   // 计算平均吻合率
   let totalMatch = 0;
@@ -1216,13 +1260,37 @@ async function refreshOwnerVotes() {
       </div>`;
   }).join('');
 
-  document.getElementById('owner-vote-list').innerHTML = html;
+  // 好友参与列表已在前面设置，这里是逐题详情（默认收起）
+  const detailSection = document.getElementById('owner-detail-section');
+  if (detailSection) {
+    detailExpanded = false;
+    detailSection.style.display = 'none';
+  }
+  document.getElementById('owner-vote-detail-list').innerHTML = html;
 }
 
 function copyLink() {
   navigator.clipboard.writeText(STATE.shareUrl).then(() => showToast('链接已复制！'));
 }
 function showShareTip() { showToast('截图或复制链接分享给微信好友吧～'); }
+
+let detailExpanded = true;
+function toggleDetailSection() {
+  detailExpanded = !detailExpanded;
+  const section = document.getElementById('owner-detail-section');
+  const btn = section ? section.querySelector('button') : null;
+  if (section) section.style.display = detailExpanded ? 'block' : 'none';
+  if (btn) btn.textContent = detailExpanded ? '收起 ↑' : '展开 ↓';
+}
+
+function expandDetail() {
+  detailExpanded = true;
+  const section = document.getElementById('owner-detail-section');
+  const btn = section ? section.querySelector('button') : null;
+  if (section) section.style.display = 'block';
+  if (btn) btn.textContent = '收起 ↑';
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // =============================================
 // URL Hash 路由（好友进入）
@@ -1311,9 +1379,13 @@ function renderFriendQuestion(idx) {
           const letters = ['A','B','C'];
           const letter = letters[i];
           const isSel = selected === letter;
-          return `<button class="option-btn ${isSel?'selected':''}" onclick="selectFriendAnswer(${idx},'${letter}')">
+          const isLocked = STATE.friendLocked && STATE.friendLocked[idx];
+          const btnClass = isSel ? (isLocked ? 'option-btn selected locked' : 'option-btn selected') : 'option-btn';
+          const onclick = (isLocked || isSel) ? '' : `onclick="selectFriendAnswer(${idx},'${letter}')"`;
+          const lockIcon = isLocked && isSel ? ' 🔒' : '';
+          return `<button class="${btnClass}" ${onclick}>
             <span class="option-letter">${letter}</span>
-            <span>${opt}</span>
+            <span>${opt}${lockIcon}</span>
           </button>`;
         }).join('')}
       </div>
@@ -1352,7 +1424,12 @@ function buildRevealBox(q, ownerData, idx, ownerName) {
 }
 
 function selectFriendAnswer(idx, letter) {
+  // 已答过的题不能再修改
+  if (STATE.friendLocked && STATE.friendLocked[idx]) return;
   STATE.friendAnswers[idx] = letter;
+  // 标记本题为已锁定
+  if (!STATE.friendLocked) STATE.friendLocked = {};
+  STATE.friendLocked[idx] = true;
   renderFriendQuestion(idx);
 }
 
@@ -1375,6 +1452,7 @@ function submitFriendQuiz() {
 
 function redoFriendQuiz() {
   STATE.friendAnswers = {};
+  STATE.friendLocked = {};
   STATE.currentFriendQ = 0;
   renderFriendQuestion(0);
   showPage('page-friend-quiz');
@@ -1522,10 +1600,6 @@ function renderFriendDone(ownerData, friendRecord) {
 
   document.getElementById('compare-section').innerHTML = `
     ${summaryHtml}
-    <div style="font-size:14px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
-      📋 逐题对比
-    </div>
-    ${html}
     ${paywallHtml}
   `;
 }
@@ -1541,17 +1615,23 @@ function handlePay(ownerName, perceivedType) {
   btn.innerHTML = '⏳ 正在拉起支付...';
   payInProgress = true;
 
-  // 模拟微信支付流程（实际项目对接微信支付 JSAPI）
-  setTimeout(() => {
-    // 模拟支付成功
+  // 调用服务端记录付费
+  apiPost('/api/pay', {
+    ownerUid: STATE.friendOwnerId,
+    friendName: STATE.friendName,
+    friendType: perceivedType,
+  }).then(() => {
     showToast('支付成功！🎉');
-
     document.getElementById('paywall-section').style.display = 'none';
     const unlocked = document.getElementById('unlocked-section');
     unlocked.style.display = 'block';
-
     payInProgress = false;
-  }, 1800);
+  }).catch(err => {
+    showToast('支付失败，请重试');
+    btn.disabled = false;
+    btn.innerHTML = '💰 支付 ¥0.1 解锁查看';
+    payInProgress = false;
+  });
 }
 
 // =============================================

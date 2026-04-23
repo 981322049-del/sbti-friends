@@ -60,6 +60,7 @@ app.post('/api/owner', (req, res) => {
     pattern,
     answers,
     friends: [],
+    paidCount: 0,
     createdAt: Date.now(),
   };
   saveDb();
@@ -79,6 +80,7 @@ app.get('/api/owner/:uid', (req, res) => {
     pattern: owner.pattern,
     answers: owner.answers,
     friendsCount: owner.friends.length,
+    paidCount: owner.paidCount || 0,
     createdAt: owner.createdAt,
   });
 });
@@ -102,6 +104,8 @@ app.post('/api/friend', (req, res) => {
     name: name || '神秘朋友',
     anon: !!anon,
     answers,
+    paid: false,
+    paidAt: null,
     ts: Date.now(),
   };
   owner.friends.push(friendRecord);
@@ -121,9 +125,29 @@ app.get('/api/owner/:uid/friends', (req, res) => {
 // 5. 获取所有发起者列表（管理页用）
 app.get('/api/owners', (req, res) => {
   const list = Object.values(db.owners)
-    .map(o => ({ uid: o.uid, name: o.name, type: o.type, friendsCount: o.friends.length, createdAt: o.createdAt }))
+    .map(o => ({ uid: o.uid, name: o.name, type: o.type, friendsCount: o.friends.length, paidCount: o.paidCount || 0, createdAt: o.createdAt }))
     .sort((a, b) => b.createdAt - a.createdAt);
   res.json({ total: list.length, list });
+});
+
+// 6. 记录好友付费
+app.post('/api/pay', (req, res) => {
+  const { ownerUid, friendName, friendType } = req.body;
+  if (!ownerUid) return res.status(400).json({ error: '缺少参数' });
+  const owner = db.owners[ownerUid];
+  if (!owner) return res.status(404).json({ error: '问卷不存在' });
+
+  // 查找对应的好友记录
+  const friend = owner.friends.find(f => f.name === friendName);
+  if (!friend) return res.status(404).json({ error: '好友记录不存在' });
+  if (friend.paid) return res.status(409).json({ error: '已支付过' });
+
+  friend.paid = true;
+  friend.paidAt = Date.now();
+  owner.paidCount = (owner.paidCount || 0) + 1;
+  saveDb();
+  console.log(`💰 Payment recorded: ${friendName} paid for ${owner.name}'s quiz (total: ${owner.paidCount})`);
+  res.json({ success: true, paidCount: owner.paidCount });
 });
 
 // 6. 获取统计概览
