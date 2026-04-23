@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>我眼中的你不一样 · SBTI 朋友互猜</title>
+<style>
+  /* ===== 基础变量 ===== */
+  :root {
+    --teal: #0abfbc;
+    --teal-dark: #089b99;
+    --blue: #4e6ef2;
+    --purple: #a855f7;
+    --pink: #f472b6;
+    --orange: #fb923c;
+    --grad: linear-gradient(135deg, #0abfbc 0%, #4e6ef2 100%);
+    --grad2: linear-gradient(135deg, #a855f7 0%, #f472b6 100%);
+    --bg: #f0f4ff;
+    --card: #ffffff;
+    --text: #1e293b;
+    --sub: #64748b;
+    --border: #e2e8f0;
+    --radius: 20px;
+    --shadow: 0 4px 24px rgba(78,110,242,.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'PingFang SC', 'HarmonyOS Sans', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* ===== 通用 ===== */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px;
+    padding: 14px 32px;
+    border: none; border-radius: 50px;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+    text-decoration: none;
+    letter-spacing: .5px;
+  }
+  .btn-primary { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(78,110,242,.35); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(78,110,242,.45); }
+  .btn-outline { background: #fff; color: var(--blue); border: 2px solid var(--blue); }
+  .btn-outline:hover { background: var(--blue); color: #fff; }
+  .btn-purple { background: var(--grad2); color: #fff; box-shadow: 0 4px 16px rgba(168,85,247,.35); }
+  .btn-gray { background: #f1f5f9; color: var(--sub); border: none; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+  .btn-full { width: 100%; }
+
+  .tag {
+    display: inline-block; padding: 3px 12px;
+    border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+
+  /* ===== 启动页 ===== */
+  #page-splash {
+    background: linear-gradient(160deg, #0abfbc 0%, #4e6ef2 60%, #a855f7 100%);
+    align-items: center; justify-content: center; text-align: center;
+    padding: 40px 24px; position: relative; overflow: hidden;
+  }
+  .splash-bg {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  }
+  .splash-circle {
+    position: absolute; border-radius: 50%;
+    background: rgba(255,255,255,.07);
+  }
+  .splash-circle:nth-child(1) { width: 300px; height: 300px; top: -80px; left: -60px; }
+  .splash-circle:nth-child(2) { width: 200px; height: 200px; bottom: 80px; right: -40px; }
+  .splash-circle:nth-child(3) { width: 120px; height: 120px; top: 45%; left: 20%; }
+
+  .splash-emoji { font-size: 72px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+  .splash-title { font-size: 28px; font-weight: 800; color: #fff; line-height: 1.3; margin-bottom: 8px; }
+  .splash-subtitle { font-size: 15px; color: rgba(255,255,255,.8); margin-bottom: 32px; line-height: 1.6; }
+
+  .splash-features {
+    display: flex; gap: 12px; margin-bottom: 40px; justify-content: center; flex-wrap: wrap;
+  }
+  .splash-feature {
+    background: rgba(255,255,255,.18); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: 8px 16px; border-radius: 50px;
+    color: #fff; font-size: 13px; font-weight: 500;
+  }
+  .splash-actions { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+  .btn-splash-start {
+    background: #fff; color: var(--blue);
+    font-size: 17px; padding: 16px 32px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  }
+  .btn-splash-start:hover { transform: translateY(-2px); }
+
+  .splash-note { color: rgba(255,255,255,.6); font-size: 12px; margin-top: 16px; }
+
+  /* ===== 答题页通用 ===== */
+  .quiz-header {
+    background: var(--card);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .quiz-header-top {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+  }
+  .quiz-header-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .quiz-progress-text { font-size: 13px; color: var(--sub); }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--grad); border-radius: 4px; transition: width .4s ease; }
+
+  .quiz-body { flex: 1; padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; }
+
+  /* ===== 题目卡片 ===== */
+  .question-card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 24px; margin-bottom: 16px;
+    animation: fadeUp .3s ease;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  .question-dimension {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  }
+  .dim-badge {
+    width: 32px; height: 32px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .dim-label { font-size: 12px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 1px; }
+
+  .question-text { font-size: 16px; font-weight: 600; line-height: 1.6; margin-bottom: 20px; color: var(--text); }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option-btn {
+    width: 100%; padding: 14px 18px;
+    background: #f8fafc; border: 2px solid var(--border);
+    border-radius: 14px; cursor: pointer;
+    text-align: left; font-size: 15px; line-height: 1.5;
+    transition: all .2s; color: var(--text);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .option-btn:hover { border-color: var(--teal); background: #f0fffe; }
+  .option-btn.selected {
+    border-color: var(--blue); background: linear-gradient(135deg, #f0f4ff, #f5f0ff);
+    color: var(--blue); font-weight: 600;
+    box-shadow: 0 2px 12px rgba(78,110,242,.15);
+  }
+  .option-letter {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    background: var(--border); color: var(--sub); transition: all .2s;
+  }
+  .option-btn.selected .option-letter { background: var(--blue); color: #fff; }
+
+  /* 好友视角对比 */
+  .option-result-bar { display: none; }
+  .show-result .option-result-bar {
+    display: block; height: 4px; border-radius: 4px; margin-top: 6px;
+    background: var(--border); overflow: hidden;
+  }
+  .option-result-fill { height: 100%; border-radius: 4px; background: var(--grad); transition: width .8s ease; }
+
+  .nav-btns { display: flex; gap: 12px; margin-top: 8px; padding-bottom: 32px; }
+
+  /* ===== 提交成功页 ===== */
+  #page-owner-result, #page-friend-done {
+    background: var(--bg);
+  }
+  .result-hero {
+    background: var(--grad); padding: 48px 24px 32px;
+    text-align: center; color: #fff;
+  }
+  .result-hero-emoji { font-size: 56px; margin-bottom: 12px; }
+  .result-hero h2 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .result-hero p { font-size: 14px; opacity: .85; }
+
+  .result-stats {
+    display: flex; gap: 12px; padding: 20px;
+    max-width: 600px; margin: 0 auto;
+  }
+  .stat-card {
+    flex: 1; background: var(--card); border-radius: 16px;
+    padding: 16px; text-align: center; box-shadow: var(--shadow);
+  }
+  .stat-num { font-size: 28px; font-weight: 800; color: var(--blue); }
+  .stat-label { font-size: 12px; color: var(--sub); margin-top: 4px; }
+
+  .result-section { padding: 0 20px 16px; max-width: 600px; margin: 0 auto; width: 100%; }
+  .section-title {
+    font-size: 14px; font-weight: 700; color: var(--sub);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px; margin-top: 4px;
+  }
+
+  /* 朋友投票卡 */
+  .vote-card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 14px;
+  }
+  .vote-question { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 14px; line-height: 1.5; }
+
+  .vote-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; position: relative;
+  }
+  .vote-option-label {
+    font-size: 13px; color: var(--sub); width: 20px; flex-shrink: 0; font-weight: 600;
+  }
+  .vote-option-bar {
+    flex: 1; height: 28px; background: #f1f5f9; border-radius: 8px; overflow: hidden; position: relative;
+  }
+  .vote-bar-fill {
+    height: 100%; border-radius: 8px;
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: 11px; font-weight: 700; color: #fff;
+    transition: width 1s ease; min-width: 0;
+    position: relative; overflow: visible;
+  }
+  .vote-bar-mine { background: linear-gradient(90deg, #0abfbc, #4e6ef2); }
+  .vote-bar-friends { background: linear-gradient(90deg, #a855f7, #f472b6); }
+  .vote-bar-neutral { background: linear-gradient(90deg, #94a3b8, #cbd5e1); }
+
+  .vote-avatars {
+    display: flex; margin-left: -4px;
+  }
+  .vote-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid #fff; margin-left: -4px;
+    font-size: 10px; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; flex-shrink: 0;
+  }
+
+  .my-answer-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    background: linear-gradient(135deg, #0abfbc22, #4e6ef222);
+    color: var(--blue); border: 1px solid #4e6ef233;
+  }
+
+  /* 匿名开关 */
+  .anon-toggle {
+    background: var(--card); border-radius: 16px;
+    padding: 16px 20px; margin: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow); max-width: 560px;
+  }
+  .anon-toggle-text h4 { font-size: 15px; font-weight: 600; }
+  .anon-toggle-text p { font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .toggle-switch {
+    width: 48px; height: 26px; border-radius: 13px;
+    background: #e2e8f0; position: relative; cursor: pointer;
+    transition: background .2s; flex-shrink: 0;
+  }
+  .toggle-switch.on { background: var(--teal); }
+  .toggle-knob {
+    position: absolute; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; top: 3px; left: 3px;
+    transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+  .toggle-switch.on .toggle-knob { transform: translateX(22px); }
+
+  /* 分享卡 */
+  .share-card {
+    background: linear-gradient(135deg, #4e6ef2, #a855f7);
+    border-radius: var(--radius); padding: 24px; margin: 0 20px 20px;
+    max-width: 560px; color: #fff; text-align: center;
+    box-shadow: 0 8px 32px rgba(78,110,242,.3);
+  }
+  .share-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .share-card p { font-size: 13px; opacity: .85; margin-bottom: 20px; }
+  .share-link {
+    background: rgba(255,255,255,.18); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 12px; padding: 12px 16px;
+    font-size: 13px; word-break: break-all; margin-bottom: 16px;
+    text-align: left;
+  }
+  .share-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn-share { background: rgba(255,255,255,.25); color: #fff; border: 1px solid rgba(255,255,255,.4); padding: 10px 20px; font-size: 14px; }
+  .btn-share:hover { background: rgba(255,255,255,.4); }
+
+  /* 好友作答页头部 */
+  .friend-hero {
+    background: var(--grad2); padding: 32px 24px 24px;
+    text-align: center; color: #fff;
+  }
+  .friend-avatar-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;
+  }
+  .friend-owner-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800; color: #fff;
+    border: 3px solid rgba(255,255,255,.5);
+    background: rgba(255,255,255,.2);
+  }
+  .arrow-icon { font-size: 20px; opacity: .7; }
+  .friend-you-tag {
+    background: rgba(255,255,255,.2); padding: 6px 14px; border-radius: 20px; font-size: 12px;
+  }
+  .friend-hero h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .friend-hero p { font-size: 13px; opacity: .85; }
+
+  /* 好友答完后的对比 */
+  .compare-section { padding: 16px 20px; max-width: 600px; margin: 0 auto; width: 100%; }
+  .compare-card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .compare-q { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 14px; line-height: 1.5; }
+  .compare-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .compare-col { flex: 1; text-align: center; }
+  .compare-col-label { font-size: 11px; color: var(--sub); margin-bottom: 8px; font-weight: 600; }
+  .compare-choice {
+    padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    line-height: 1.4;
+  }
+  .compare-mine { background: linear-gradient(135deg, #f0f4ff, #f5f0ff); color: var(--blue); }
+  .compare-friend { background: linear-gradient(135deg, #fdf0ff, #fff0f7); color: var(--purple); }
+  .compare-match { background: linear-gradient(135deg, #f0fff8, #f0fffe); color: #059669; }
+  .match-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; margin-top: 8px;
+  }
+  .match-yes { background: #dcfce7; color: #059669; }
+  .match-no { background: #fef3c7; color: #d97706; }
+
+  /* 实时揭晓答案区 */
+  .reveal-box {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f0fff8, #f0fffe);
+    border: 2px dashed #0abfbc44;
+    border-radius: 12px;
+    animation: fadeUp .3s ease;
+  }
+  .reveal-label {
+    font-size: 11px; font-weight: 700; color: #0abfbc;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .reveal-answer {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; color: #089b99;
+  }
+  .reveal-check { font-size: 18px; }
+  .reveal-match-tag {
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: #dcfce7; color: #059669; margin-left: 8px;
+  }
+  .reveal-wrong-tag {
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: #fef3c7; color: #d97706; margin-left: 8px;
+  }
+
+  /* 付费解锁区 */
+  .paywall-card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 28px 24px;
+    margin: 16px 20px; max-width: 560px;
+    text-align: center;
+  }
+  .paywall-lock {
+    font-size: 48px; margin-bottom: 12px;
+  }
+  .paywall-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; color: var(--text); }
+  .paywall-sub { font-size: 13px; color: var(--sub); line-height: 1.5; margin-bottom: 20px; }
+  .paywall-preview {
+    background: #f8fafc; border-radius: 12px;
+    padding: 14px; margin-bottom: 20px; display: flex;
+    flex-direction: column; align-items: center; gap: 6px;
+  }
+  .paywall-preview-blur {
+    filter: blur(6px); user-select: none; opacity: .4;
+  }
+  .paywall-preview-type { font-size: 24px; font-weight: 900; }
+  .paywall-preview-desc { font-size: 12px; color: var(--sub); }
+  .paywall-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 32px; border: none; border-radius: 50px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #fff; box-shadow: 0 4px 16px rgba(251,191,36,.4);
+    transition: all .2s;
+  }
+  .paywall-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(251,191,36,.5); }
+  .paywall-btn:disabled { opacity: .6; cursor: default; transform: none; }
+  .paywall-unlocked {
+    background: linear-gradient(135deg, #f0fff8, #f0fffe);
+    border: 2px solid #0abfbc44; border-radius: 16px;
+    padding: 24px; margin: 16px 20px; max-width: 560px;
+    text-align: center;
+    animation: fadeUp .4s ease;
+  }
+  .unlocked-emoji { font-size: 48px; margin-bottom: 8px; }
+  .unlocked-type { font-size: 32px; font-weight: 900; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+  .unlocked-desc { font-size: 14px; color: var(--sub); line-height: 1.5; }
+
+  /* ===== toast ===== */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(30,41,59,.92); color: #fff;
+    padding: 12px 24px; border-radius: 50px;
+    font-size: 14px; font-weight: 500;
+    opacity: 0; transition: all .3s; pointer-events: none; z-index: 9999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== 维度颜色 ===== */
+  .dim-E { background: #fee2e2; color: #ef4444; }
+  .dim-I { background: #fee2e2; color: #ef4444; }
+  .dim-S { background: #fef9c3; color: #ca8a04; }
+  .dim-N { background: #fef9c3; color: #ca8a04; }
+  .dim-T { background: #dbeafe; color: #2563eb; }
+  .dim-F { background: #dbeafe; color: #2563eb; }
+  .dim-J { background: #f3e8ff; color: #9333ea; }
+  .dim-P { background: #f3e8ff; color: #9333ea; }
+
+  /* ===== 输入昵称弹窗 ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity .3s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--card); border-radius: 24px 24px 0 0;
+    padding: 24px; width: 100%; max-width: 600px;
+    transform: translateY(100%); transition: transform .3s ease;
+  }
+  .modal-overlay.show .modal-sheet { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: #e2e8f0; border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--sub); margin-bottom: 20px; }
+  .modal-input {
+    width: 100%; padding: 14px 18px; border: 2px solid var(--border);
+    border-radius: 14px; font-size: 16px; outline: none;
+    transition: border-color .2s;
+  }
+  .modal-input:focus { border-color: var(--teal); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+  /* ===== 加载动画 ===== */
+  .loading-dots span {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--blue); margin: 0 2px;
+    animation: dot-bounce .8s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: .15s; }
+  .loading-dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot-bounce { 0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)} }
+
+  /* ===== 响应式 ===== */
+  @media(max-width:400px) {
+    .splash-title { font-size: 24px; }
+    .compare-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 启动页 ===== -->
+<div id="page-splash" class="page active">
+  <div class="splash-bg">
+    <div class="splash-circle"></div>
+    <div class="splash-circle"></div>
+    <div class="splash-circle"></div>
+  </div>
+  <div class="splash-emoji">🪞</div>
+  <h1 class="splash-title">我眼中的你<br>不一样</h1>
+  <p class="splash-subtitle">用 SBTI 30题，<br>看看朋友眼中真实的你是谁</p>
+  <div class="splash-features">
+    <span class="splash-feature">✨ SBTI 30道题</span>
+    <span class="splash-feature">👫 朋友互评</span>
+    <span class="splash-feature">🔄 无限裂变</span>
+    <span class="splash-feature">💰 付费解锁</span>
+  </div>
+  <div class="splash-actions">
+    <button class="btn btn-splash-start" onclick="startOwnerQuiz()">开始测试 →</button>
+  </div>
+  <p class="splash-note">先完成16道题 · 再分享给好友 · 看他们眼中的你</p>
+</div>
+
+<!-- ===== 发起者答题页 ===== -->
+<div id="page-owner-quiz" class="page">
+  <div class="quiz-header">
+    <div class="quiz-header-top">
+      <span class="quiz-header-title">🧠 SBTI 自测</span>
+      <span class="quiz-progress-text" id="owner-progress-text">1 / 16</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="owner-progress-fill" style="width:6.25%"></div></div>
+  </div>
+  <div class="quiz-body" id="owner-quiz-body"></div>
+</div>
+
+<!-- ===== 发起者结果+分享页 ===== -->
+<div id="page-owner-result" class="page">
+  <div class="result-hero">
+    <div class="result-hero-emoji" id="owner-type-emoji">🌟</div>
+    <h2 id="owner-type-label">你的 SBTI 类型</h2>
+    <p id="owner-type-desc">正在分析中...</p>
+  </div>
+
+  <div class="result-stats" id="owner-stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-friends">0</div>
+      <div class="stat-label">好友已作答</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-agree">—</div>
+      <div class="stat-label">平均吻合率</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-type">—</div>
+      <div class="stat-label">最多眼中我</div>
+    </div>
+  </div>
+
+  <!-- 分享卡 -->
+  <div class="share-card">
+    <h3>🪞</h3>
+    <p>你眼中的我是什么类型？</p>
+    <div class="share-link" id="share-link-text">loading...</div>
+    <div class="share-btns">
+      <button class="btn btn-share" onclick="copyLink()">📋 复制链接</button>
+      <button class="btn btn-share" onclick="showShareTip()">📱 分享到微信</button>
+    </div>
+  </div>
+
+  <!-- 问题投票详情 -->
+  <div class="result-section">
+    <div class="section-title">朋友们眼中的我</div>
+    <div id="owner-vote-list">
+      <div style="text-align:center;padding:40px 0;color:var(--sub)">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <p style="margin-top:12px;font-size:14px">等待好友作答...</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:80px"></div>
+</div>
+
+<!-- ===== 好友作答页 ===== -->
+<div id="page-friend-quiz" class="page">
+  <div class="friend-hero" id="friend-hero">
+    <div class="friend-avatar-row">
+      <div class="friend-owner-avatar" id="friend-owner-avatar">A</div>
+      <span class="arrow-icon">→</span>
+      <span class="friend-you-tag">你来猜</span>
+    </div>
+    <h2 id="friend-hero-title">朋友A 会怎么选？</h2>
+    <p>在每道题中，猜猜 TA 会选哪个选项</p>
+  </div>
+
+  <div class="anon-toggle" id="anon-toggle-bar">
+    <div class="anon-toggle-text">
+      <h4>🕵️ 匿名模式</h4>
+      <p>开启后，你的头像和昵称对方不可见</p>
+    </div>
+    <div class="toggle-switch" id="anon-switch" onclick="toggleAnon()">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+
+  <div class="quiz-header" style="top:0;position:sticky">
+    <div class="quiz-header-top">
+      <span class="quiz-header-title">👥 猜猜 TA</span>
+      <span class="quiz-progress-text" id="friend-progress-text">1 / 16</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="friend-progress-fill" style="width:6.25%"></div></div>
+  </div>
+  <div class="quiz-body" id="friend-quiz-body"></div>
+</div>
+
+<!-- ===== 好友完成页 ===== -->
+<div id="page-friend-done" class="page">
+  <div class="result-hero" style="background:var(--grad2)">
+    <div class="result-hero-emoji">🎉</div>
+    <h2>提交成功！</h2>
+    <p id="friend-done-desc">你认为 TA 是这样的人～</p>
+  </div>
+
+  <!-- 对比展示 -->
+  <div class="compare-section" id="compare-section"></div>
+
+  <!-- 重做 + 发起自己的测试 -->
+  <div style="padding:0 20px 20px;max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <button class="btn btn-outline" style="width:100%" onclick="redoFriendQuiz()">🔄 重新作答</button>
+    <div class="share-card" style="margin:0;background:linear-gradient(135deg,#0abfbc,#4e6ef2)">
+      <h3>🚀 发起你自己的测试</h3>
+      <p>让你的朋友来猜猜你，看看他们眼中的你</p>
+      <button class="btn btn-splash-start" style="width:100%" onclick="startOwnerQuiz()">立即发起</button>
+    </div>
+  </div>
+  <div style="height:40px"></div>
+</div>
+
+<!-- ===== 昵称输入弹窗 ===== -->
+<div class="modal-overlay" id="name-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 class="modal-title" id="modal-title-text">给自己起个名字 👋</h3>
+    <p class="modal-sub" id="modal-sub-text">好友看到你的答案时会显示这个名字</p>
+    <input class="modal-input" id="name-input" type="text" placeholder="输入你的名字或昵称" maxlength="12">
+    <div class="modal-actions">
+      <button class="btn btn-gray" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="flex:2" id="modal-confirm-btn" onclick="confirmName()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// API 配置
+// =============================================
+const API_BASE = ''; // 部署后留空即为同源
+
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiPost(path, body) {
+  const res = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// =============================================
+// SBTI 题目数据
+// =============================================
+const DIM_MAPPING = {
+  // 自我模型 (S) - 3维度
+  S1: [0, 1],   // 自尊自信
+  S2: [2, 3],   // 自我清晰度
+  S3: [4, 5],   // 核心价值
+  // 情感模型 (E) - 3维度
+  E1: [6, 7],   // 依恋安全感
+  E2: [8, 9],   // 情感投入度
+  E3: [10, 11], // 边界与依赖
+  // 态度模型 (A) - 3维度
+  A1: [12, 13], // 世界观倾向
+  A2: [14, 15], // 规则与灵活度
+  A3: [16, 17], // 人生意义感
+  // 行动驱力模型 (Ac) - 3维度
+  Ac1: [18, 19],// 动机导向
+  Ac2: [20, 21],// 决策风格
+  Ac3: [22, 23],// 执行模式
+  // 社交模型 (So) - 3维度
+  So1: [24, 25],// 社交主动性
+  So2: [26, 27],// 人际边界感
+  So3: [28, 29],// 表达与真实度
+};
+
+const DIM_ORDER = ['S1','S2','S3','E1','E2','E3','A1','A2','A3','Ac1','Ac2','Ac3','So1','So2','So3'];
+const MODEL_GROUPS = [
+  { name:'自我模型', emoji:'🪞', dims:['S1','S2','S3'] },
+  { name:'情感模型', emoji:'💗', dims:['E1','E2','E3'] },
+  { name:'态度模型', emoji:'🧭', dims:['A1','A2','A3'] },
+  { name:'行动驱力', emoji:'⚡', dims:['Ac1','Ac2','Ac3'] },
+  { name:'社交模型', emoji:'👥', dims:['So1','So2','So3'] },
+];
+
+const DIM_INFO = {
+  S1:  { emoji:'🔍', label:'自尊自信', model:'自我' },
+  S2:  { emoji:'🪞', label:'自我清晰度', model:'自我' },
+  S3:  { emoji:'💎', label:'核心价值', model:'自我' },
+  E1:  { emoji:'🔐', label:'依恋安全感', model:'情感' },
+  E2:  { emoji:'❤️', label:'情感投入度', model:'情感' },
+  E3:  { emoji:'🚪', label:'边界与依赖', model:'情感' },
+  A1:  { emoji:'🌍', label:'世界观倾向', model:'态度' },
+  A2:  { emoji:'⚖️', label:'规则灵活度', model:'态度' },
+  A3:  { emoji:'🎯', label:'人生意义感', model:'态度' },
+  Ac1: { emoji:'🚀', label:'动机导向', model:'行动' },
+  Ac2: { emoji:'🎛️', label:'决策风格', model:'行动' },
+  Ac3: { emoji:'🏃', label:'执行模式', model:'行动' },
+  So1: { emoji:'🤝', label:'社交主动性', model:'社交' },
+  So2: { emoji:'📏', label:'人际边界感', model:'社交' },
+  So3: { emoji:'🎭', label:'表达真实度', model:'社交' },
+};
+
+// 30题完整题库
+const QUESTIONS = [
+  // S1 自尊自信
+  { dim:'S1', q:'刷到「我是一只阴暗的老鼠，一只爬行的蟑螂...」，你的反应是？',
+    opts:['A. 我哭了。。', 'B. 这是什么。。', 'C. 这不是我！'] },
+  { dim:'S1', q:'「我不够好，周围的人都比我优秀」——你认同吗？',
+    opts:['A. 确实是这样', 'B. 有时候会这么想', 'C. 绝对不是'] },
+
+  // S2 自我清晰度
+  { dim:'S2', q:'你清楚真正的自己是什么样的吗？',
+    opts:['A. 不太清楚，我是谁？', 'B. 模模糊糊大概知道', 'C. 非常清楚，我就是我'] },
+  { dim:'S2', q:'你内心有真正追求的东西吗？',
+    opts:['A. 没有，不知道在追求什么', 'B. 好像有又好像没有', 'C. 有，非常明确'] },
+
+  // S3 核心价值
+  { dim:'S3', q:'「我一定要不断往上爬、变得更厉害」——你？',
+    opts:['A. 不认同，我只想躺平', 'B. 有点追求但不强求', 'C. 必须的，我要变强'] },
+  { dim:'S3', q:'「外人的评价对我来说无所谓」——你？',
+    opts:['A. 怎么可能无所谓！很在意', 'B. 一般不太在意', 'C. 完全不在意，自己开心就行'] },
+
+  // E1 依恋安全感
+  { dim:'E1', q:'对象超过5小时没回消息，说自己窜稀了，你会怎么想？',
+    opts:['A. 拉稀不可能5小时，ta肯定隐瞒了什么！', 'B. 半信半疑，在信任和怀疑间摇摆', 'C. 也许真的不舒服，理解'] },
+  { dim:'E1', q:'你在感情里经常担心被对方抛弃吗？',
+    opts:['A. 是的，经常焦虑', 'B. 偶尔会担心', 'C. 从不担心'] },
+
+  // E2 情感投入度
+  { dim:'E2', q:'你对待每一份感情都是认真的吗？',
+    opts:['A. 才不是呢（理直气壮）', 'B. 也许？差不多吧', 'C. 是的，问心无愧！'] },
+  { dim:'E2', q:'你的恋爱对象是一个完美的人，此时你会？',
+    opts:['A. 再完美也不会陷太深，保持清醒', 'B. 介于两者之间', 'C. 非常珍惜，可能变成恋爱脑'] },
+
+  // E3 边界与依赖
+  { dim:'E3', q:'恋爱后，对象非常黏人，你作何感想？',
+    opts:['A. 那很爽！被需要的感觉真好', 'B. 都行，无所谓', 'C. 还是保留独立空间比较好'] },
+  { dim:'E3', q:'你在任何关系里都很重视个人空间吗？',
+    opts:['A. 不了，我更享受依赖与被依赖', 'B. 看情况', 'C. 是的！私人空间神圣不可侵犯'] },
+
+  // A1 世界观倾向
+  { dim:'A1', q:'「大多数人是善良的」——你怎么看？',
+    opts:['A. 拉倒吧，人心比痔疮还黑', 'B. 也许吧，世界有好有坏', 'C. 是的，我愿意相信美好'] },
+  { dim:'A1', q:'一个小女孩递给你一根棒棒糖，此时你作何感想？',
+    opts:['A. 呜呜她好可爱好纯真！谢谢你小朋友！', 'B. 一脸蒙圈，挠挠头', 'C. 不会是新型诈骗吧？还是走开为妙'] },
+
+  // A2 规则与灵活度
+  { dim:'A2', q:'快考试了，约了朋友打游戏，你怎么办？',
+    opts:['A. 翘了！就这一次，朋友重要', 'B. 干脆请个假，形式上合规', 'C. 都快考试了去啥去，复习'] },
+  { dim:'A2', q:'「我喜欢打破常规，不喜欢被束缚」——你？',
+    opts:['A. 认同！规则是用来打破的', 'B. 保持中立，有时候守规矩有时候不', 'C. 不认同，我喜欢井井有条'] },
+
+  // A3 人生意义感
+  { dim:'A3', q:'你做事通常有目标吗？',
+    opts:['A. 没有，随缘', 'B. 有时有目标，有时没有', 'C. 是的，做事先定目标'] },
+  { dim:'A3', q:'有人说「人生哪有什么真正的意义，人不过是和动物一样」——你？',
+    opts:['A. 说得太对了，虚无', 'B. 也许是，也许不是，who knows', 'C. 胡扯！人生是有意义的'] },
+
+  // Ac1 动机导向
+  { dim:'Ac1', q:'「我做事主要为了取得成果和进步，而不是避免麻烦和风险」——你？',
+    opts:['A. 不认同，我更多是为了避免麻烦', 'B. 两者兼有吧', 'C. 认同，我要进步'] },
+  { dim:'Ac1', q:'你因便秘坐在马桶上（已长达30分钟），拉不出，你会？',
+    opts:['A. 再坐三十分钟看看，说不定就有了', 'B. 用力拍屁股：死屁股快拉啊！', 'C. 上开塞露，快速解决才是正道'] },
+
+  // Ac2 决策风格
+  { dim:'Ac2', q:'你做决定比较果断，不喜欢犹豫吗？',
+    opts:['A. 不认同，我选择困难', 'B. 一般，看情况', 'C. 是的，我从不犹豫'] },
+  { dim:'Ac2', q:'此题没有题目，请盲选。',
+    opts:['A. 我反复思考后感觉应该选A', 'B. 要不选B吧？', 'C. 不会就选C嘛'] },
+
+  // Ac3 执行模式
+  { dim:'Ac3', q:'别人说你「执行力强」，你内心更接近哪句？',
+    opts:['A. 我是被逼到最后才执行力强的。', 'B. 啊，有时候吧，不一定', 'C. 是的，事情本来就该被推进'] },
+  { dim:'Ac3', q:'你做事常常有计划，____',
+    opts:['A. 然而计划不如变化快', 'B. 有时能完成，有时不能', 'C. 我讨厌被打乱计划'] },
+
+  // So1 社交主动性
+  { dim:'So1', q:'玩《第五人格》结识网友，被邀请线下见面，你的想法是？',
+    opts:['A. 网上口嗨下就算了，真见面还是忐忑', 'B. 见就见吧，反正谁来都能聊两句', 'C. 我会精心打扮并热情赴约，万一呢？'] },
+  { dim:'So1', q:'朋友带了ta的朋友一起来玩，你最可能的状态是？',
+    opts:['A. 对朋友的朋友天然有距离感，怕尴尬', 'B. 看对方是谁，能玩就玩', 'C. 朋友的朋友就是我的朋友！要热情'] },
+
+  // So2 人际边界感
+  { dim:'So2', q:'「我和人相处主打一个电子围栏，靠太近会自动报警」——你？',
+    opts:['A. 不认同，我喜欢亲密关系', 'B. 中立，看情况', 'C. 认同！边界感非常重要'] },
+  { dim:'So2', q:'「我渴望和我信任的人关系密切，熟得像失散多年的亲戚」——你？',
+    opts:['A. 认同！我要成为最好的朋友', 'B. 中立，随缘', 'C. 不认同，保持距离更好'] },
+
+  // So3 表达与真实度
+  { dim:'So3', q:'明明对一件事有不同/负面的看法，但最后没说出来，多数时候原因是？',
+    opts:['A. 这种情况较少，我基本都说', 'B. 碍于情面或者关系', 'C. 不想让别人知道我这么阴暗'] },
+  { dim:'So3', q:'你在不同人面前会表现出不一样的自己吗？',
+    opts:['A. 不会，我表里如一', 'B. 有点差异但不多', 'C. 是的，我是变色龙'] },
+];
+
+// 27种 SBTI 人格类型
+const TYPE_INFO = {
+  HHHH: { emoji:'😆', desc:'傻乐者，系统强制兜底的傻乐者', rarity:'极稀有 0.06%' },
+  DRUNK: { emoji:'🍺', desc:'酒鬼，隐藏结局：酒精异常因子接管', rarity:'极稀有 0.8%' },
+  BOSS:  { emoji:'�掌舵者', desc:'手里永远拿着方向盘的人', rarity:'稀有 1.53%' },
+  POOR:  { emoji:'⛏️', desc:'贫困者，精力全灌一个坑的矿井', rarity:'稀有 1.68%' },
+  'WOC!':{ emoji:'😱', desc:'握草人，表面卧槽后台冷静分析', rarity:'中稀有 2.04%' },
+  IMFW:  { emoji:'🌸', desc:'废物，需要温室养护的兰花', rarity:'中稀有 2.12%' },
+  'THIN-K':{ emoji:'🔎', desc:'思考者，审判一切信息的偏执党', rarity:'中稀有 2.24%' },
+  'ATM-er':{ emoji:'💸', desc:'送钱者，永远在支付时间精力耐心', rarity:'中稀有 2.46%' },
+  DEAD:  { emoji:'💀', desc:'死者，通关后删档999次的贤者', rarity:'中稀有 2.5%' },
+  SHIT:  { emoji:'🖕', desc:'愤世者，嘴上骂世界手上拯救世界', rarity:'中稀有 2.53%' },
+  MONK:  { emoji:'🧘', desc:'僧人，结界神圣不可侵犯的修行者', rarity:'中稀有 2.8%' },
+  'JOKE-R':{ emoji:'🃏', desc:'小丑，一层层打开最里面只剩回声', rarity:'中稀有 2.99%' },
+  'OH-NO':{ emoji:'🚨', desc:'哦不人，一声Oh no!把风险扼杀在萌芽', rarity:'中稀有 3.05%' },
+  GOGO:  { emoji:'🏃', desc:'行者，世界只有已完成和即将被完成', rarity:'中稀有 3.05%' },
+  FUCK:  { emoji:'🌿', desc:'草者，除草剂杀不死的人形野草', rarity:'中稀有 3.38%' },
+  CTRL:  { emoji:'🎛️', desc:'拿捏者，人形自走任务管理器', rarity:'中稀有 3.61%' },
+  SOLO:  { emoji:'🦔', desc:'孤儿，全身都是刺的软心脏刺猬', rarity:'中稀有 3.72%' },
+  IMSB:  { emoji:'💭', desc:'傻者，内心戏比漫威宇宙还长', rarity:'中稀有 4.21%' },
+  'LOVE-R':{ emoji:'🌈', desc:'多情者，情感处理器是彩虹制', rarity:'中稀有 4.23%' },
+  ZZZZ:  { emoji:'😴', desc:'装死者，死线一到29分钟交答卷', rarity:'中稀有 4.68%' },
+  MUM:   { emoji:'🩹', desc:'妈妈，给自己的药剂量总是小一号', rarity:'较常见 5.14%' },
+  'Dior-s':{ emoji:'😎', desc:'屌丝，第欧根尼的精神传人', rarity:'较常见 5.23%' },
+  MALO:  { emoji:'🐒', desc:'吗喽，灵魂还挂在树上荡秋千', rarity:'较常见 5.71%' },
+  SEXY:  { emoji:'💃', desc:'尤物，走进房间照明系统自动识别', rarity:'较常见 5.94%' },
+  FAKE:  { emoji:'🎭', desc:'伪人，切面具比切输入法还快', rarity:'较常见 6.61%' },
+  'THAN-K':{ emoji:'🙏', desc:'感恩者，永不枯竭的正能量发射塔', rarity:'常见 7.76%' },
+  OJBK:  { emoji:'🤷', desc:'无所谓人，都行是一种统治哲学', rarity:'最常见 9.92%' },
+};
+
+// =============================================
+// 状态管理（模拟本地多用户）
+// =============================================
+let STATE = {
+  mode: 'owner',
+  ownerName: '',
+  ownerAnswers: {},   // { qIdx: 'A'|'B'|'C' }
+  ownerType: '',
+  ownerPattern: '',   // 15位模式串
+  ownerId: '',
+  ownerData: null,    // 服务器返回的发起者数据
+  ownerFriends: [],   // 好友列表
+
+  friendName: '',
+  friendAnon: false,
+  friendAnswers: {},
+  friendOwnerId: '',
+};
+
+// =============================================
+// SBTI 核心算法
+// =============================================
+
+// 选项字母 → 分值
+function letterToScore(letter) {
+  return letter === 'A' ? 1 : letter === 'B' ? 2 : 3;
+}
+
+// 计算维度等级（L=低/M=中/H=高）
+function scoreToLevel(score) {
+  if (score <= 3) return 'L';
+  if (score === 4) return 'M';
+  return 'H';
+}
+
+// 计算完整的 15 维模式串
+function calcDimPattern(answers) {
+  return DIM_ORDER.map(dim => {
+    const [q1, q2] = DIM_MAPPING[dim];
+    const s1 = letterToScore(answers[q1]);
+    const s2 = letterToScore(answers[q2]);
+    return scoreToLevel(s1 + s2);
+  }).join('');
+}
+
+// SBTI 25种标准人格类型（15维模式串 → 人格代码）
+// 来源：SBTI 官方类型库 + 稀有度规律推导
+const PERSONALITY_PATTERNS = {
+  'HHHH': 'HHHH', // 傻乐者 - 极特殊模式，优先兜底
+  'LLLL': 'OJBK',  // 无所谓人 - 全低配
+  'HHLL': 'OJBK',
+  'LHHH': 'THAN-K', // 感恩者 - 高行动+高社交
+  'HHLH': 'THAN-K',
+  'HLHH': 'CTRL',   // 拿捏者 - 高自我+高行动
+  'HLHM': 'CTRL',
+  'HHMH': 'BOSS',    // 领导者
+  'HMHH': 'BOSS',
+  'HMLL': 'MALO',   // 吗喽
+  'LHML': 'MALO',
+  'LLHM': 'FAKE',    // 伪人
+  'LLLH': 'FAKE',
+  'MHHH': 'SEXY',    // 尤物
+  'HHMM': 'SEXY',
+  'HMMM': 'GOGO',    // 行者
+  'MHMH': 'GOGO',
+  'MHMM': 'ZZZZ',    // 装死者
+  'MMMH': 'ZZZZ',
+  'HLLM': 'FUCK',    // 草者
+  'LHLL': 'FUCK',
+  'MMML': 'MUM',     // 妈妈
+  'LMLM': 'MUM',
+  'HMML': 'SOLO',    // 孤儿
+  'HLML': 'SOLO',
+  'LLMM': 'Dior-s',  // 屌丝
+  'LMLL': 'Dior-s',
+  'MLHH': 'LOVE-R',  // 多情者
+  'MHHL': 'LOVE-R',
+  'HHLM': 'THIN-K',  // 思考者
+  'LHMM': 'THIN-K',
+  'MHLL': 'JOKE-R',  // 小丑
+  'LHLH': 'JOKE-R',
+  'MMLM': 'CTRL',    // 更多变体
+  'HMLH': 'BOSS',
+  'LLML': 'ATM-er',  // 送钱者
+  'LMMM': 'ATM-er',
+  'MMLL': 'DEAD',    // 死者
+  'LMML': 'DEAD',
+  'MMHM': 'WOC!',    // 握草人
+  'LHMH': 'WOC!',
+  'MLLH': 'SHIT',    // 愤世者
+  'HMLM': 'SHIT',
+  'MLMM': 'IMSB',    // 傻者
+  'HLLL': 'IMSB',
+  'LLLH-M': 'MONK',  // 僧人（特殊后缀M）
+  'MMLH': 'MONK',
+  'LHHH-': 'OH-NO',  // 哦不人
+  'HLHH-': 'OH-NO',
+  'MMMM': 'IMFW',    // 废物
+  'HMMH': 'IMFW',
+};
+
+// 计算人格类型
+function calcSBTIType(answers) {
+  const pattern = calcDimPattern(answers);
+
+  // 1. 完全匹配
+  if (PERSONALITY_PATTERNS[pattern]) return { type: PERSONALITY_PATTERNS[pattern], pattern, exact: true };
+
+  // 2. Hamming距离最近匹配（15维中找出匹配度最高的标准人格）
+  let bestType = 'HHHH', bestScore = 0;
+  Object.entries(PERSONALITY_PATTERNS).forEach(([p, t]) => {
+    if (t === 'HHHH') return; // 跳过傻乐者兜底
+    let match = 0;
+    for (let i = 0; i < 15; i++) {
+      if (pattern[i] === p[i]) match++;
+    }
+    const score = match / 15;
+    if (score > bestScore) { bestScore = score; bestType = t; }
+  });
+
+  // 3. 匹配度 < 60% → 傻乐者
+  if (bestScore < 0.6) return { type: 'HHHH', pattern, exact: false, matchRate: bestScore };
+
+  return { type: bestType, pattern, exact: false, matchRate: bestScore };
+}
+
+// =============================================
+// 页面路由
+// =============================================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// =============================================
+// 启动页 → 发起者答题
+// =============================================
+function startOwnerQuiz() {
+  STATE.mode = 'owner';
+  STATE.ownerAnswers = {};
+  STATE.ownerType = '';
+  STATE.ownerPattern = '';
+  STATE.ownerId = '';
+  STATE.ownerData = null;
+  STATE.currentQ = 0;
+
+  // 先弹昵称输入
+  openModal('你的名字叫什么？', '答题完成后可以分享给好友', () => {
+    STATE.ownerName = document.getElementById('name-input').value.trim() || '匿名用户';
+    renderOwnerQuestion(0);
+    showPage('page-owner-quiz');
+  });
+}
+
+let pendingModalCallback = null;
+function openModal(title, sub, cb) {
+  document.getElementById('modal-title-text').textContent = title;
+  document.getElementById('modal-sub-text').textContent = sub;
+  document.getElementById('name-input').value = '';
+  pendingModalCallback = cb;
+  document.getElementById('name-modal').classList.add('show');
+  setTimeout(() => document.getElementById('name-input').focus(), 400);
+}
+function closeModal() {
+  document.getElementById('name-modal').classList.remove('show');
+}
+function confirmName() {
+  closeModal();
+  if (pendingModalCallback) { pendingModalCallback(); pendingModalCallback = null; }
+}
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmName();
+});
+
+// =============================================
+// 发起者题目渲染
+// =============================================
+function renderOwnerQuestion(idx) {
+  STATE.currentQ = idx;
+  const total = QUESTIONS.length;
+  const pct = ((idx+1)/total*100).toFixed(1);
+  document.getElementById('owner-progress-text').textContent = `${idx+1} / ${total}`;
+  document.getElementById('owner-progress-fill').style.width = pct+'%';
+
+  const q = QUESTIONS[idx];
+  const dimInfo = DIM_INFO[q.dim];
+  const selected = STATE.ownerAnswers[idx];
+
+  // 维度badge颜色
+  const dimColorMap = { S:'#f59e0b', E:'#ef4444', A:'#3b82f6', Ac:'#8b5cf6', So:'#10b981' };
+  const dimColor = dimColorMap[q.dim.slice(0,2)] || '#4e6ef2';
+
+  const html = `
+    <div class="question-card">
+      <div class="question-dimension">
+        <div class="dim-badge" style="background:${dimColor}22;color:${dimColor}">${dimInfo.emoji}</div>
+        <span class="dim-label">${dimInfo.model} · ${dimInfo.label}</span>
+      </div>
+      <div class="question-text">${q.q}</div>
+      <div class="options">
+        ${q.opts.map((opt, i) => {
+          const letters = ['A','B','C'];
+          const letter = letters[i];
+          const isSel = selected === letter;
+          return `<button class="option-btn ${isSel?'selected':''}" onclick="selectOwnerAnswer(${idx},'${letter}')">
+            <span class="option-letter">${letter}</span>
+            <span>${opt}</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="nav-btns">
+      ${idx > 0 ? `<button class="btn btn-gray" style="flex:1" onclick="renderOwnerQuestion(${idx-1})">← 上一题</button>` : '<div style="flex:1"></div>'}
+      ${selected ?
+        (idx < total-1 ?
+          `<button class="btn btn-primary" style="flex:2" onclick="renderOwnerQuestion(${idx+1})">下一题 →</button>` :
+          `<button class="btn btn-primary" style="flex:2" onclick="submitOwnerQuiz()">提交 SBTI 🎉</button>`
+        ) : `<button class="btn btn-primary" style="flex:2;opacity:.4" disabled>请选择</button>`
+      }
+    </div>
+  `;
+  document.getElementById('owner-quiz-body').innerHTML = html;
+}
+
+function selectOwnerAnswer(idx, letter) {
+  STATE.ownerAnswers[idx] = letter;
+  renderOwnerQuestion(idx);
+}
+
+// =============================================
+// 发起者提交
+// =============================================
+function submitOwnerQuiz() {
+  if (Object.keys(STATE.ownerAnswers).length < QUESTIONS.length) { showToast('还有题目未作答！'); return; }
+
+  // 用 SBTI 算法计算类型
+  const result = calcSBTIType(STATE.ownerAnswers);
+  STATE.ownerType = result.type;
+  STATE.ownerPattern = result.pattern;
+
+  const answers = QUESTIONS.map((_, i) => STATE.ownerAnswers[i]);
+
+  // 提交到服务器
+  apiPost('/api/owner', {
+    name: STATE.ownerName,
+    type: STATE.ownerType,
+    pattern: STATE.ownerPattern,
+    answers,
+  }).then(data => {
+    STATE.ownerId = data.uid;
+    STATE.ownerData = data;
+    STATE.ownerFriends = [];
+    // 存本地用于刷新恢复
+    localStorage.setItem('sbti_last_owner_id', data.uid);
+    localStorage.setItem('sbti_last_owner_name', STATE.ownerName);
+    localStorage.setItem('sbti_last_owner_type', STATE.ownerType);
+    // 发起者的答案存本地（用于结果页展示投票详情）
+    localStorage.setItem('sbti_owner_answers_' + data.uid, JSON.stringify(answers));
+    renderOwnerResult();
+    showPage('page-owner-result');
+  }).catch(err => {
+    showToast('提交失败，请重试');
+    console.error(err);
+  });
+}
+
+// =============================================
+// 发起者结果页
+// =============================================
+function renderOwnerResult() {
+  const uid = STATE.ownerId;
+  const typeInfo = TYPE_INFO[STATE.ownerType] || { emoji: '🌟', desc: '独特的你' };
+
+  document.getElementById('owner-type-emoji').textContent = typeInfo.emoji;
+  document.getElementById('owner-type-label').textContent = STATE.ownerType;
+  document.getElementById('owner-type-desc').innerHTML = `${typeInfo.desc}<br><span style="font-size:12px;opacity:.7">稀有度：${typeInfo.rarity || '未知'}</span>`;
+
+  // 分享链接
+  const shareUrl = `${location.origin}${location.pathname}#friend/${uid}`;
+  document.getElementById('share-link-text').textContent = shareUrl;
+  STATE.shareUrl = shareUrl;
+
+  refreshOwnerVotes();
+}
+
+async function refreshOwnerVotes() {
+  const uid = STATE.ownerId;
+  if (!uid) return;
+
+  try {
+    const [ownerRes, friendsRes] = await Promise.all([
+      apiGet(`/api/owner/${uid}`),
+      apiGet(`/api/owner/${uid}/friends`),
+    ]);
+    STATE.ownerData = ownerRes;
+    STATE.ownerFriends = friendsRes.friends || [];
+  } catch (e) {
+    console.error('Failed to refresh:', e);
+    return;
+  }
+
+  const friends = STATE.ownerFriends;
+  const total = friends.length;
+  // 从 localStorage 读取发起者自己的答案
+  const myAnswers = JSON.parse(localStorage.getItem('sbti_owner_answers_' + uid) || '[]');
+
+  document.getElementById('stat-friends').textContent = total;
+
+  if (total === 0) {
+    document.getElementById('stat-agree').textContent = '—';
+    document.getElementById('stat-type').textContent = '—';
+    document.getElementById('owner-vote-list').innerHTML = `
+      <div style="text-align:center;padding:40px 0;color:var(--sub)">
+        <div style="font-size:36px;margin-bottom:12px">🔗</div>
+        <p style="font-size:14px;font-weight:600">还没有好友作答</p>
+        <p style="font-size:13px;margin-top:4px">把上方链接分享出去吧！</p>
+      </div>`;
+    return;
+  }
+
+  // 计算平均吻合率
+  let totalMatch = 0;
+  friends.forEach(f => {
+    let match = 0;
+    myAnswers.forEach((a, i) => { if (f.answers[i] === a) match++; });
+    totalMatch += match / myAnswers.length;
+  });
+  const avgMatch = Math.round(totalMatch / total * 100);
+  document.getElementById('stat-agree').textContent = avgMatch + '%';
+
+  // 朋友们眼中发起者的类型（用SBTI算法）
+  const typeCounts = {};
+  friends.forEach(f => {
+    const r = calcSBTIType(f.answers);
+    typeCounts[r.type] = (typeCounts[r.type]||0) + 1;
+  });
+  const topType = Object.entries(typeCounts).sort((a,b) => b[1]-a[1])[0][0];
+  const topTypeInfo = TYPE_INFO[topType] || { emoji: '🤔', desc: '' };
+  document.getElementById('stat-type').textContent = topType;
+  document.getElementById('stat-type').title = topTypeInfo.desc;
+
+  // 每道题投票详情（3选项）
+  const AVATAR_COLORS = ['#4e6ef2','#0abfbc','#a855f7','#f472b6','#fb923c','#059669'];
+  const dimColorMap = { S:'#f59e0b', E:'#ef4444', A:'#3b82f6', Ac:'#8b5cf6', So:'#10b981' };
+
+  const html = QUESTIONS.map((q, qi) => {
+    const myAns = myAnswers[qi];
+    const votes = [0, 0, 0]; // A, B, C
+    const votersByOpt = [[], [], []];
+    const letters = ['A','B','C'];
+    friends.forEach((f, fi) => {
+      const pickIdx = letters.indexOf(f.answers[qi]);
+      if (pickIdx >= 0) {
+        votes[pickIdx]++;
+        votersByOpt[pickIdx].push({ name: f.name, anon: f.anon, color: AVATAR_COLORS[fi % AVATAR_COLORS.length] });
+      }
+    });
+    const dimColor = dimColorMap[q.dim.slice(0,2)] || '#4e6ef2';
+    const dimInfo = DIM_INFO[q.dim];
+    const myAnsIdx = letters.indexOf(myAns);
+
+    return `
+      <div class="vote-card">
+        <div class="question-dimension" style="margin-bottom:8px">
+          <div class="dim-badge" style="width:22px;height:22px;font-size:11px;background:${dimColor}22;color:${dimColor}">${dimInfo.emoji}</div>
+          <span class="dim-label">${dimInfo.model}·${dimInfo.label}</span>
+          <span class="my-answer-tag" style="margin-left:auto">我: ${myAns}</span>
+        </div>
+        <div class="vote-question">${qi+1}. ${q.q}</div>
+        ${['A','B','C'].map((letter, li) => {
+          const pct = total > 0 ? Math.round(votes[li]/total*100) : 0;
+          const isMine = myAns === letter;
+          const fillClass = isMine ? 'vote-bar-mine' : (votes[li]>0 ? 'vote-bar-friends' : 'vote-bar-neutral');
+          const avatarHtml = votersByOpt[li].map(v =>
+            `<div class="vote-avatar" style="background:${v.anon?'#94a3b8':v.color}" title="${v.anon?'匿名':v.name}">${v.anon?'?':v.name.slice(0,1)}</div>`
+          ).join('');
+          return `
+            <div class="vote-option">
+              <span class="vote-option-label">${letter}</span>
+              <div class="vote-option-bar">
+                <div class="vote-bar-fill ${fillClass}" style="width:${pct}%">${pct > 12 ? pct+'%' : ''}</div>
+              </div>
+              ${pct <= 12 && votes[li]>0 ? `<span style="font-size:11px;color:var(--sub);margin-left:4px">${pct}%</span>` : ''}
+              ${isMine ? `<span style="font-size:11px;color:var(--blue);margin-left:4px">👤我</span>` : ''}
+              <div class="vote-avatars" style="margin-left:6px">${avatarHtml}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }).join('');
+
+  document.getElementById('owner-vote-list').innerHTML = html;
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(STATE.shareUrl).then(() => showToast('链接已复制！'));
+}
+function showShareTip() { showToast('截图或复制链接分享给微信好友吧～'); }
+
+// =============================================
+// URL Hash 路由（好友进入）
+// =============================================
+async function checkHash() {
+  const hash = location.hash;
+
+  // 好友入口
+  if (hash.startsWith('#friend/')) {
+    const uid = hash.slice('#friend/'.length);
+    try {
+      const ownerData = await apiGet(`/api/owner/${uid}`);
+      STATE.friendOwnerId = uid;
+      STATE.friendOwnerData = ownerData;
+      STATE.friendAnswers = {};
+      STATE.friendAnon = false;
+      renderFriendHero(ownerData);
+      showPage('page-friend-quiz');
+      renderFriendQuestion(0);
+    } catch (e) {
+      showToast('链接已失效或无效');
+    }
+    return;
+  }
+
+  // 发起者刷新：检查 localStorage 是否有上次记录
+  if (!hash || hash === '#') {
+    const lastOwnerId = localStorage.getItem('sbti_last_owner_id');
+    const lastOwnerName = localStorage.getItem('sbti_last_owner_name');
+    const lastOwnerType = localStorage.getItem('sbti_last_owner_type');
+    if (lastOwnerId && lastOwnerName) {
+      STATE.ownerId = lastOwnerId;
+      STATE.ownerName = lastOwnerName;
+      STATE.ownerType = lastOwnerType || '';
+      STATE.ownerData = null;
+      STATE.ownerFriends = [];
+      renderOwnerResult();
+      showPage('page-owner-result');
+    }
+  }
+}
+window.addEventListener('hashchange', checkHash);
+window.addEventListener('load', checkHash);
+
+function renderFriendHero(ownerData) {
+  document.getElementById('friend-owner-avatar').textContent = (ownerData.name || 'TA').slice(0,1);
+  document.getElementById('friend-hero-title').textContent = `${ownerData.name} 会怎么选？`;
+}
+
+// =============================================
+// 好友答题
+// =============================================
+function toggleAnon() {
+  STATE.friendAnon = !STATE.friendAnon;
+  const sw = document.getElementById('anon-switch');
+  sw.classList.toggle('on', STATE.friendAnon);
+}
+
+function renderFriendQuestion(idx) {
+  STATE.currentFriendQ = idx;
+  const total = QUESTIONS.length;
+  const pct = ((idx+1)/total*100).toFixed(1);
+  document.getElementById('friend-progress-text').textContent = `${idx+1} / ${total}`;
+  document.getElementById('friend-progress-fill').style.width = pct+'%';
+
+  const q = QUESTIONS[idx];
+  const dimInfo = DIM_INFO[q.dim];
+  const selected = STATE.friendAnswers[idx];
+
+  const ownerData = STATE.friendOwnerData;
+  const ownerName = ownerData ? ownerData.name : 'TA';
+
+  const dimColorMap = { S:'#f59e0b', E:'#ef4444', A:'#3b82f6', Ac:'#8b5cf6', So:'#10b981' };
+  const dimColor = dimColorMap[q.dim.slice(0,2)] || '#4e6ef2';
+
+  const html = `
+    <div class="question-card">
+      <div class="question-dimension">
+        <div class="dim-badge" style="background:${dimColor}22;color:${dimColor}">${dimInfo.emoji}</div>
+        <span class="dim-label">${dimInfo.model} · ${dimInfo.label}</span>
+      </div>
+      <div class="question-text" style="color:var(--purple)">你觉得 <strong>${ownerName}</strong> 会选哪个？</div>
+      <div class="question-text">${q.q}</div>
+      <div class="options">
+        ${q.opts.map((opt, i) => {
+          const letters = ['A','B','C'];
+          const letter = letters[i];
+          const isSel = selected === letter;
+          return `<button class="option-btn ${isSel?'selected':''}" onclick="selectFriendAnswer(${idx},'${letter}')">
+            <span class="option-letter">${letter}</span>
+            <span>${opt}</span>
+          </button>`;
+        }).join('')}
+      </div>
+      ${selected ? buildRevealBox(q, ownerData, idx, ownerName) : ''}
+    </div>
+    <div class="nav-btns">
+      ${idx > 0 ? `<button class="btn btn-gray" style="flex:1" onclick="renderFriendQuestion(${idx-1})">← 上一题</button>` : '<div style="flex:1"></div>'}
+      ${selected ?
+        (idx < total-1 ?
+          `<button class="btn btn-purple" style="flex:2" onclick="renderFriendQuestion(${idx+1})">下一题 →</button>` :
+          `<button class="btn btn-purple" style="flex:2" onclick="submitFriendQuiz()">提交结果 🎉</button>`
+        ) : `<button class="btn btn-purple" style="flex:2;opacity:.4" disabled>请选择</button>`
+      }
+    </div>
+  `;
+  document.getElementById('friend-quiz-body').innerHTML = html;
+}
+
+function buildRevealBox(q, ownerData, idx, ownerName) {
+  if (!ownerData) return '';
+  const ownerAns = ownerData.answers[idx];
+  const myGuess = STATE.friendAnswers[idx];
+  const isMatch = myGuess === ownerAns;
+  const letters = ['A','B','C'];
+  const ownerAnsIdx = letters.indexOf(ownerAns);
+  const ownerOpt = q.opts[ownerAnsIdx !== -1 ? ownerAnsIdx : 0];
+  return `
+    <div class="reveal-box">
+      <div class="reveal-label">🎯 ${ownerName} 的答案是</div>
+      <div class="reveal-answer">
+        <span class="reveal-check">${isMatch ? '🎯' : '📝'}</span>
+        <span>${ownerAns}. ${ownerOpt}</span>
+        ${isMatch ? '<span class="reveal-match-tag">✓ 猜对了！</span>' : '<span class="reveal-wrong-tag">△ 猜错了</span>'}
+      </div>
+    </div>`;
+}
+
+function selectFriendAnswer(idx, letter) {
+  STATE.friendAnswers[idx] = letter;
+  renderFriendQuestion(idx);
+}
+
+// =============================================
+// 好友提交
+// =============================================
+function submitFriendQuiz() {
+  const answers = Object.values(STATE.friendAnswers);
+  if (answers.length < QUESTIONS.length) { showToast('还有题目未作答！'); return; }
+
+  if (!STATE.friendName) {
+    openModal('你的名字叫什么？', '让朋友看到是谁猜了 TA', () => {
+      STATE.friendName = document.getElementById('name-input').value.trim() || '神秘朋友';
+      doSubmitFriend();
+    });
+  } else {
+    doSubmitFriend();
+  }
+}
+
+function redoFriendQuiz() {
+  STATE.friendAnswers = {};
+  STATE.currentFriendQ = 0;
+  renderFriendQuestion(0);
+  showPage('page-friend-quiz');
+}
+
+function doSubmitFriend() {
+  const uid = STATE.friendOwnerId;
+  const ownerData = STATE.friendOwnerData;
+  if (!ownerData) { showToast('数据异常，请刷新'); return; }
+
+  const friendRecord = {
+    name: STATE.friendName,
+    anon: STATE.friendAnon,
+    answers: QUESTIONS.map((_, i) => STATE.friendAnswers[i]),
+    ts: Date.now(),
+  };
+
+  // 提交到服务器
+  apiPost('/api/friend', {
+    ownerUid: uid,
+    name: friendRecord.name,
+    anon: friendRecord.anon,
+    answers: friendRecord.answers,
+  }).then(() => {
+    renderFriendDone(ownerData, friendRecord);
+    showPage('page-friend-done');
+  }).catch(err => {
+    showToast('提交失败：' + err.message);
+  });
+}
+
+// =============================================
+// 好友完成页（对比展示）
+// =============================================
+
+// 计算朋友眼中发起者的 SBTI 类型
+// 用 SBTI 算法计算"你眼中朋友的人格"
+function calcPerceivedType(guesses) {
+  const result = calcSBTIType(guesses);
+  return result.type;
+}
+
+function renderFriendDone(ownerData, friendRecord) {
+  const ownerName = ownerData.name;
+  let matchCount = 0;
+  const letters = ['A','B','C'];
+  const dimColorMap = { S:'#f59e0b', E:'#ef4444', A:'#3b82f6', Ac:'#8b5cf6', So:'#10b981' };
+
+  const html = QUESTIONS.map((q, qi) => {
+    const myGuess = friendRecord.answers[qi];
+    const ownerAns = ownerData.answers[qi];
+    const isMatch = myGuess === ownerAns;
+    if (isMatch) matchCount++;
+
+    const myGuessIdx = letters.indexOf(myGuess);
+    const ownerAnsIdx = letters.indexOf(ownerAns);
+    const guessOpt = q.opts[myGuessIdx !== -1 ? myGuessIdx : 0];
+    const ownerOpt = q.opts[ownerAnsIdx !== -1 ? ownerAnsIdx : 0];
+    const dimInfo = DIM_INFO[q.dim];
+    const dimColor = dimColorMap[q.dim.slice(0,2)] || '#4e6ef2';
+
+    if (isMatch) {
+      return `
+        <div class="compare-card">
+          <div class="question-dimension" style="margin-bottom:8px">
+            <div class="dim-badge" style="width:22px;height:22px;font-size:11px;background:${dimColor}22;color:${dimColor}">${dimInfo.emoji}</div>
+            <span class="dim-label">${dimInfo.model}·${dimInfo.label}</span>
+            <span class="match-badge match-yes" style="margin-left:auto">✓ 猜中了！</span>
+          </div>
+          <div class="compare-q">${qi+1}. ${q.q}</div>
+          <div class="compare-choice compare-match">${ownerAns}. ${ownerOpt}</div>
+        </div>`;
+    } else {
+      return `
+        <div class="compare-card">
+          <div class="question-dimension" style="margin-bottom:8px">
+            <div class="dim-badge" style="width:22px;height:22px;font-size:11px;background:${dimColor}22;color:${dimColor}">${dimInfo.emoji}</div>
+            <span class="dim-label">${dimInfo.model}·${dimInfo.label}</span>
+            <span class="match-badge match-no" style="margin-left:auto">△ 猜错了</span>
+          </div>
+          <div class="compare-q">${qi+1}. ${q.q}</div>
+          <div class="compare-row">
+            <div class="compare-col">
+              <div class="compare-col-label">你猜 ${ownerName}</div>
+              <div class="compare-choice compare-friend">${myGuess}. ${guessOpt}</div>
+            </div>
+            <div class="compare-col">
+              <div class="compare-col-label">${ownerName} 实际</div>
+              <div class="compare-choice compare-mine">${ownerAns}. ${ownerOpt}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+  }).join('');
+
+  const pct = Math.round(matchCount / QUESTIONS.length * 100);
+  let summaryText = pct >= 50 ? '我可太了解你了 😎' : pct >= 20 ? '对我多少有点误解 🤔' : '你对我一无所知 😵';
+  let summaryEmoji = pct >= 50 ? '🎯' : pct >= 20 ? '🤔' : '💀';
+  let summaryBg = pct >= 50 ? 'linear-gradient(135deg,#f0fff8,#dcfce7)' : pct >= 20 ? 'linear-gradient(135deg,#fffbeb,#fef9c3)' : 'linear-gradient(135deg,#fff1f2,#ffe4e6)';
+  let summaryColor = pct >= 50 ? '#059669' : pct >= 20 ? '#d97706' : '#ef4444';
+
+  document.getElementById('friend-done-desc').textContent = `你猜中了 ${matchCount}/${QUESTIONS.length} 题（吻合率 ${pct}%）— ${summaryText}`;
+
+  // 顶部吻合摘要
+  const summaryHtml = `
+    <div style="background:${summaryBg};border-radius:20px;padding:20px 24px;margin-bottom:16px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.06)">
+      <div style="font-size:40px;margin-bottom:8px">${summaryEmoji}</div>
+      <div style="font-size:18px;font-weight:800;color:${summaryColor};margin-bottom:4px">${summaryText}</div>
+      <div style="font-size:13px;color:var(--sub)">你们有 <strong>${matchCount}</strong> 道题答案一致（${pct}%）</div>
+    </div>
+  `;
+
+  // 计算朋友眼中发起者的SBTI类型
+  const perceivedType = calcPerceivedType(friendRecord.answers);
+  const perceivedTypeInfo = TYPE_INFO[perceivedType] || { emoji: '🤔', desc: '神秘的SBTI人格' };
+
+  // SBTI人格支付墙
+  const paywallHtml = `
+    <div class="paywall-card" id="paywall-section">
+      <div class="paywall-lock">🧠</div>
+      <div class="paywall-title">你眼中的 ${ownerName} 是哪种人格？</div>
+      <div class="paywall-sub">
+        根据你的所有答案，系统计算出<br>
+        你认为 <strong>${ownerName}</strong> 的 SBTI 人格类型
+      </div>
+      <div class="paywall-preview">
+        <div class="paywall-preview-blur">
+          <div class="paywall-preview-type">【神秘人格】</div>
+          <div class="paywall-preview-desc">支付 ¥0.1 解锁答案</div>
+        </div>
+      </div>
+      <button class="paywall-btn" id="pay-btn" onclick="handlePay('${ownerName}','${perceivedType}')">
+        💰 支付 ¥0.1 解锁查看
+      </button>
+    </div>
+    <div class="paywall-unlocked" id="unlocked-section" style="display:none">
+      <div class="unlocked-emoji">${perceivedTypeInfo.emoji}</div>
+      <div class="unlocked-type">${perceivedType}</div>
+      <div class="unlocked-desc">${perceivedTypeInfo.desc}</div>
+      <p style="font-size:13px;color:var(--sub);margin-top:12px">
+        这是你眼中 <strong>${ownerName}</strong> 的 SBTI 人格
+      </p>
+    </div>
+  `;
+
+  document.getElementById('compare-section').innerHTML = `
+    ${summaryHtml}
+    <div style="font-size:14px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+      📋 逐题对比
+    </div>
+    ${html}
+    ${paywallHtml}
+  `;
+}
+
+// =============================================
+// 付费解锁
+// =============================================
+let payInProgress = false;
+function handlePay(ownerName, perceivedType) {
+  if (payInProgress) return;
+  const btn = document.getElementById('pay-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 正在拉起支付...';
+  payInProgress = true;
+
+  // 模拟微信支付流程（实际项目对接微信支付 JSAPI）
+  setTimeout(() => {
+    // 模拟支付成功
+    showToast('支付成功！🎉');
+
+    document.getElementById('paywall-section').style.display = 'none';
+    const unlocked = document.getElementById('unlocked-section');
+    unlocked.style.display = 'block';
+
+    payInProgress = false;
+  }, 1800);
+}
+
+// =============================================
+// Toast
+// =============================================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// 页面加载时检查 hash
+checkHash();
+
+// 定时刷新发起者结果（模拟实时）
+setInterval(() => {
+  if (document.getElementById('page-owner-result').classList.contains('active') && STATE.ownerId) {
+    refreshOwnerVotes();
+  }
+}, 5000);
+</script>
+</body>
+</html>
