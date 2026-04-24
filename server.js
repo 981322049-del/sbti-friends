@@ -130,9 +130,9 @@ app.get('/api/owners', (req, res) => {
   res.json({ total: list.length, list });
 });
 
-// 6. 记录好友付费
+// 6. 记录好友支付申请 / 确认收款
 app.post('/api/pay', (req, res) => {
-  const { ownerUid, friendName, friendType } = req.body;
+  const { ownerUid, friendName, friendType, orderId, status } = req.body;
   if (!ownerUid) return res.status(400).json({ error: '缺少参数' });
   const owner = db.owners[ownerUid];
   if (!owner) return res.status(404).json({ error: '问卷不存在' });
@@ -142,12 +142,57 @@ app.post('/api/pay', (req, res) => {
   if (!friend) return res.status(404).json({ error: '好友记录不存在' });
   if (friend.paid) return res.status(409).json({ error: '已支付过' });
 
+  const isPending = status === 'pending';
+
+  if (isPending) {
+    // 朋友提交"待确认"：记录订单号，等发起者确认
+    friend.payPending = true;
+    friend.orderId = orderId || '';
+    friend.friendType = friendType || '';
+    saveDb();
+    console.log(`⏳ Pay pending: ${friendName} -> ${owner.name} (order: ${orderId})`);
+    return res.json({ success: true, pending: true });
+  }
+
+  // 直接确认（兜底，保留旧逻辑）
   friend.paid = true;
   friend.paidAt = Date.now();
+  friend.payPending = false;
   owner.paidCount = (owner.paidCount || 0) + 1;
   saveDb();
-  console.log(`💰 Payment recorded: ${friendName} paid for ${owner.name}'s quiz (total: ${owner.paidCount})`);
+  console.log(`💰 Payment confirmed: ${friendName} paid for ${owner.name}'s quiz (total: ${owner.paidCount})`);
   res.json({ success: true, paidCount: owner.paidCount });
+});
+
+// 7. 发起者确认某个好友收款
+app.post('/api/confirm-pay', (req, res) => {
+  const { ownerUid, friendName } = req.body;
+  if (!ownerUid || !friendName) return res.status(400).json({ error: '缺少参数' });
+  const owner = db.owners[ownerUid];
+  if (!owner) return res.status(404).json({ error: '问卷不存在' });
+
+  const friend = owner.friends.find(f => f.name === friendName);
+  if (!friend) return res.status(404).json({ error: '好友记录不存在' });
+
+  friend.paid = true;
+  friend.paidAt = Date.now();
+  friend.payPending = false;
+  owner.paidCount = (owner.paidCount || 0) + 1;
+  saveDb();
+  console.log(`✅ Confirmed pay: ${friendName} for ${owner.name}, total: ${owner.paidCount}`);
+  res.json({ success: true, paidCount: owner.paidCount });
+});
+
+// 8. 查询好友是否已付费（好友端轮询用）
+app.get('/api/pay-status', (req, res) => {
+  const { ownerUid, friendName } = req.query;
+  if (!ownerUid || !friendName) return res.status(400).json({ error: '缺少参数' });
+  const owner = db.owners[ownerUid];
+  if (!owner) return res.status(404).json({ error: '问卷不存在' });
+
+  const friend = owner.friends.find(f => f.name === friendName);
+  if (!friend) return res.status(404).json({ paid: false, pending: false });
+  res.json({ paid: !!friend.paid, pending: !!friend.payPending });
 });
 
 // 6. 获取统计概览

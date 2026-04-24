@@ -410,6 +410,48 @@
   .unlocked-type { font-size: 32px; font-weight: 900; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
   .unlocked-desc { font-size: 14px; color: var(--sub); line-height: 1.5; }
 
+  /* ===== 扫码支付弹窗 ===== */
+  .qr-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 9999; display: flex; align-items: center; justify-content: center;
+    animation: fadeIn .2s ease;
+  }
+  .qr-modal {
+    background: #fff; border-radius: 24px; padding: 28px 24px;
+    max-width: 340px; width: 90%; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    animation: slideUp .25s ease;
+  }
+  .qr-modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .qr-modal p { font-size: 13px; color: var(--sub); margin-bottom: 16px; line-height: 1.5; }
+  .qr-img { width: 180px; height: 180px; border-radius: 12px; border: 2px solid var(--border); margin: 0 auto 16px; display: block; object-fit: cover; }
+  .qr-order { font-size: 11px; color: var(--sub); background: #f8fafc; padding: 6px 12px; border-radius: 8px; margin-bottom: 16px; letter-spacing: .5px; }
+  .qr-actions { display: flex; gap: 10px; }
+  .qr-actions button { flex: 1; padding: 12px; border: none; border-radius: 50px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .qr-cancel { background: var(--border); color: var(--sub); }
+  .qr-confirm { background: var(--grad); color: #fff; box-shadow: 0 4px 12px rgba(78,110,242,.35); }
+  .qr-confirm:hover { transform: translateY(-1px); }
+  /* 待确认状态 */
+  .pending-unlock {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 2px solid #fbbf2444; border-radius: 16px;
+    padding: 20px; margin: 16px 20px; max-width: 560px;
+    text-align: center;
+  }
+  /* 发起者待确认badge */
+  .confirm-badge {
+    background: linear-gradient(135deg,#fbbf24,#f59e0b);
+    color: #fff; padding: 2px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; margin-left: 6px;
+    animation: pulse 1.5s ease infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+  .confirm-btn {
+    display: inline-block; padding: 6px 16px; background: var(--grad); color: #fff;
+    border: none; border-radius: 50px; font-size: 12px; font-weight: 700;
+    cursor: pointer; margin-top: 4px;
+  }
+
   /* ===== toast ===== */
   .toast {
     position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -531,7 +573,7 @@
     </div>
     <div class="stat-card">
       <div class="stat-num" id="stat-type">—</div>
-      <div class="stat-label">最多眼中我</div>
+      <div class="stat-label">朋友眼中我</div>
     </div>
   </div>
 
@@ -544,6 +586,12 @@
       <button class="btn btn-share" onclick="copyLink()">📋 复制链接</button>
       <button class="btn btn-share" onclick="showShareTip()">📱 分享到微信</button>
     </div>
+  </div>
+
+  <!-- 朋友眼中我的类型详情 -->
+  <div class="result-section" id="friend-type-section" style="display:none">
+    <div class="section-title">🪞 朋友眼中我的人格</div>
+    <div id="friend-perceived-type-card"></div>
   </div>
 
   <!-- 问题投票详情 -->
@@ -885,85 +933,244 @@ function calcDimPattern(answers) {
   }).join('');
 }
 
-// SBTI 25种标准人格类型（15维模式串 → 人格代码）
-// 来源：SBTI 官方类型库 + 稀有度规律推导
-const PERSONALITY_PATTERNS = {
-  'HHHH': 'HHHH', // 傻乐者 - 极特殊模式，优先兜底
-  'LLLL': 'OJBK',  // 无所谓人 - 全低配
-  'HHLL': 'OJBK',
-  'LHHH': 'THAN-K', // 感恩者 - 高行动+高社交
-  'HHLH': 'THAN-K',
-  'HLHH': 'CTRL',   // 拿捏者 - 高自我+高行动
-  'HLHM': 'CTRL',
-  'HHMH': 'BOSS',    // 领导者
-  'HMHH': 'BOSS',
-  'HMLL': 'MALO',   // 吗喽
-  'LHML': 'MALO',
-  'LLHM': 'FAKE',    // 伪人
-  'LLLH': 'FAKE',
-  'MHHH': 'SEXY',    // 尤物
-  'HHMM': 'SEXY',
-  'HMMM': 'GOGO',    // 行者
-  'MHMH': 'GOGO',
-  'MHMM': 'ZZZZ',    // 装死者
-  'MMMH': 'ZZZZ',
-  'HLLM': 'FUCK',    // 草者
-  'LHLL': 'FUCK',
-  'MMML': 'MUM',     // 妈妈
-  'LMLM': 'MUM',
-  'HMML': 'SOLO',    // 孤儿
-  'HLML': 'SOLO',
-  'LLMM': 'Dior-s',  // 屌丝
-  'LMLL': 'Dior-s',
-  'MLHH': 'LOVE-R',  // 多情者
-  'MHHL': 'LOVE-R',
-  'HHLM': 'THIN-K',  // 思考者
-  'LHMM': 'THIN-K',
-  'MHLL': 'JOKE-R',  // 小丑
-  'LHLH': 'JOKE-R',
-  'MMLM': 'CTRL',    // 更多变体
-  'HMLH': 'BOSS',
-  'LLML': 'ATM-er',  // 送钱者
-  'LMMM': 'ATM-er',
-  'MMLL': 'DEAD',    // 死者
-  'LMML': 'DEAD',
-  'MMHM': 'WOC!',    // 握草人
-  'LHMH': 'WOC!',
-  'MLLH': 'SHIT',    // 愤世者
-  'HMLM': 'SHIT',
-  'MLMM': 'IMSB',    // 傻者
-  'HLLL': 'IMSB',
-  'LLLH-M': 'MONK',  // 僧人（特殊后缀M）
-  'MMLH': 'MONK',
-  'LHHH-': 'OH-NO',  // 哦不人
-  'HLHH-': 'OH-NO',
-  'MMMM': 'IMFW',    // 废物
-  'HMMH': 'IMFW',
+// =============================================
+// SBTI 类型计算规则（基于5大模型×3维度的得分聚合）
+// 每个模型得分 = 该模型3个维度分值之和（每维 2~6 分，模型总分 6~18）
+// 模型等级：L=6~9, M=10~12, H=13~18
+// 5个模型：S(自我), E(情感), A(态度), Ac(行动), So(社交)
+// 将15维度的 L/M/H 聚合为5模型的 L/M/H → 5位模式串 → 匹配人格
+// =============================================
+
+const MODEL_DIMS = {
+  S:  ['S1','S2','S3'],
+  E:  ['E1','E2','E3'],
+  A:  ['A1','A2','A3'],
+  Ac: ['Ac1','Ac2','Ac3'],
+  So: ['So1','So2','So3'],
+};
+const MODEL_ORDER = ['S','E','A','Ac','So'];
+
+// 将单维度L/M/H转为数值
+function levelToNum(l) { return l === 'L' ? 1 : l === 'M' ? 2 : 3; }
+
+// 计算5模型聚合等级（L/M/H）
+// 3个维度各1~3分，合计3~9分：L=3~4, M=5~6, H=7~9
+function dimLevelsToModelLevel(levels) {
+  const sum = levels.reduce((s, l) => s + levelToNum(l), 0);
+  if (sum <= 4) return 'L';
+  if (sum <= 6) return 'M';
+  return 'H';
+}
+
+// 计算5位模型模式串（每位对应一个模型的 L/M/H）
+function calcModelPattern(answers) {
+  const dimPattern = calcDimPattern(answers); // 15位
+  const dimLevels = DIM_ORDER.reduce((obj, dim, i) => { obj[dim] = dimPattern[i]; return obj; }, {});
+  return MODEL_ORDER.map(model => {
+    const levels = MODEL_DIMS[model].map(dim => dimLevels[dim]);
+    return dimLevelsToModelLevel(levels);
+  }).join('');
+}
+
+// 5位模式串 → 人格类型
+// 格式：[S模型][E模型][A模型][Ac模型][So模型]，每位 L/M/H
+const TYPE_PATTERNS = {
+  // ===== 极稀有 =====
+  'HHHHH': 'HHHH',   // 傻乐者：五高全满，极罕见
+  'LLLLL': 'OJBK',   // 无所谓人：全低，无欲无求
+
+  // ===== OJBK 无所谓人 =====
+  'LLLML': 'OJBK',
+  'MLLLM': 'OJBK',
+  'LLMLL': 'OJBK',
+
+  // ===== THAN-K 感恩者：高态度+高社交 =====
+  'LHHHH': 'THAN-K',
+  'MHHHH': 'THAN-K',
+  'LLHHH': 'THAN-K',
+  'MLHHH': 'THAN-K',
+
+  // ===== CTRL 拿捏者：高自我+高行动 =====
+  'HHLHM': 'CTRL',
+  'HHMHM': 'CTRL',
+  'HHLHL': 'CTRL',
+  'HHHHM': 'CTRL',
+  'HHHHL': 'CTRL',
+
+  // ===== BOSS 领导者：高自我+高行动+中社交 =====
+  'HHHHL': 'BOSS',
+  'HHHML': 'BOSS',
+  'HHHLM': 'BOSS',
+  'HHMHL': 'BOSS',
+  'HHMHM': 'BOSS',
+
+  // ===== MALO 吗喽：低自我+低行动+高社交 =====
+  'LLLMH': 'MALO',
+  'LLLLH': 'MALO',
+  'MLLLH': 'MALO',
+  'LLLHH': 'MALO',
+
+  // ===== FAKE 伪人：低自我+高社交表达 =====
+  'LLHLH': 'FAKE',
+  'LLHLL': 'FAKE',
+  'LLLHM': 'FAKE',
+  'MLLHH': 'FAKE',
+
+  // ===== SEXY 尤物：高情感+高社交 =====
+  'MHHMH': 'SEXY',
+  'HHHH': 'SEXY',
+  'LHHMH': 'SEXY',
+  'MHHHH': 'SEXY',
+  'LHHML': 'SEXY',
+
+  // ===== GOGO 行者：高行动+低情感 =====
+  'HLHHL': 'GOGO',
+  'HLLHL': 'GOGO',
+  'MLHHL': 'GOGO',
+  'HLHML': 'GOGO',
+
+  // ===== ZZZZ 装死者：中行动+中一切 =====
+  'MMMML': 'ZZZZ',
+  'MMMMM': 'ZZZZ',
+  'LMMMM': 'ZZZZ',
+  'MMMLM': 'ZZZZ',
+
+  // ===== FUCK 草者：低情感+高自我 =====
+  'HLLML': 'FUCK',
+  'HLLLL': 'FUCK',
+  'HLLMM': 'FUCK',
+  'HLLLM': 'FUCK',
+
+  // ===== MUM 妈妈：高情感+低自我 =====
+  'LHHLM': 'MUM',
+  'LHHMM': 'MUM',
+  'LHHLL': 'MUM',
+  'MHHLM': 'MUM',
+
+  // ===== SOLO 孤儿：高自我+低社交 =====
+  'HHMLL': 'SOLO',
+  'HHLLL': 'SOLO',
+  'HHMML': 'SOLO',
+  'HHLML': 'SOLO',
+
+  // ===== Dior-s 屌丝：低自我+低态度 =====
+  'LLLLM': 'Dior-s',
+  'LLLMM': 'Dior-s',
+  'LLLLH': 'Dior-s',
+  'LLLHM': 'Dior-s',
+
+  // ===== LOVE-R 多情者：高情感+高社交 =====
+  'MHHMH': 'LOVE-R',
+  'LHHMH': 'LOVE-R',
+  'MHHHL': 'LOVE-R',
+  'MHHLH': 'LOVE-R',
+  'LHHLH': 'LOVE-R',
+
+  // ===== THIN-K 思考者：高自我+低情感+高态度 =====
+  'HHHLM': 'THIN-K',
+  'HHLHH': 'THIN-K',
+  'HHHMM': 'THIN-K',
+  'HHLHM': 'THIN-K',
+
+  // ===== JOKE-R 小丑：高社交+低自我 =====
+  'LLMHH': 'JOKE-R',
+  'LLHHH': 'JOKE-R',
+  'MLLHH': 'JOKE-R',
+  'LMMHH': 'JOKE-R',
+
+  // ===== ATM-er 送钱者：高情感+低自我+低行动 =====
+  'LHLLM': 'ATM-er',
+  'LHLLL': 'ATM-er',
+  'LHLLH': 'ATM-er',
+  'MHLLL': 'ATM-er',
+
+  // ===== DEAD 死者：低一切+中行动 =====
+  'LLLHH': 'DEAD',
+  'LLMML': 'DEAD',
+  'LLLMH': 'DEAD',
+  'LLMHM': 'DEAD',
+
+  // ===== WOC! 握草人：中情感+高态度 =====
+  'MMHHM': 'WOC!',
+  'LMHHM': 'WOC!',
+  'MMHHL': 'WOC!',
+  'MMHML': 'WOC!',
+
+  // ===== SHIT 愤世者：低情感+高态度+低社交 =====
+  'HLHLL': 'SHIT',
+  'MLHLL': 'SHIT',
+  'HLHML': 'SHIT',
+  'LLHLL': 'SHIT',
+
+  // ===== IMSB 傻者：低自我+高情感 =====
+  'LHMLM': 'IMSB',
+  'LHMLL': 'IMSB',
+  'LHMMM': 'IMSB',
+  'MHMLM': 'IMSB',
+
+  // ===== MONK 僧人：低情感+低社交+高态度 =====
+  'HLHLL': 'MONK',
+  'MLHLL': 'MONK',
+  'HLHMM': 'MONK',
+  'MLHML': 'MONK',
+
+  // ===== OH-NO 哦不人：高自我+高情感+低行动 =====
+  'HHLLL': 'OH-NO',
+  'HHMLL': 'OH-NO',
+  'HHLLM': 'OH-NO',
+  'HHLMM': 'OH-NO',
+
+  // ===== IMFW 废物：全中 =====
+  'MMMMM': 'IMFW',
+  'MMMML': 'IMFW',
+  'MMMLM': 'IMFW',
+  'MMLMM': 'IMFW',
+
+  // ===== DRUNK 酒鬼：极罕见=====
+  'LHHLH': 'DRUNK',
+  'LHHHL': 'DRUNK',
+  'MHHLH': 'DRUNK',
+
+  // ===== POOR 贫困者：低社交+高行动 =====
+  'MLLHM': 'POOR',
+  'HLLHM': 'POOR',
+  'MLLHL': 'POOR',
+  'HLLHL': 'POOR',
+
+  // ===== BOSS 掌舵者补充 =====
+  'HHHLL': 'BOSS',
+  'HHHLH': 'BOSS',
 };
 
-// 计算人格类型
+// 计算人格类型（基于5模型模式串）
 function calcSBTIType(answers) {
-  const pattern = calcDimPattern(answers);
+  const modelPattern = calcModelPattern(answers);  // 5位
+  const dimPattern = calcDimPattern(answers);       // 15位（用于展示）
 
   // 1. 完全匹配
-  if (PERSONALITY_PATTERNS[pattern]) return { type: PERSONALITY_PATTERNS[pattern], pattern, exact: true };
+  if (TYPE_PATTERNS[modelPattern]) {
+    return { type: TYPE_PATTERNS[modelPattern], pattern: dimPattern, modelPattern, exact: true };
+  }
 
-  // 2. Hamming距离最近匹配（15维中找出匹配度最高的标准人格）
-  let bestType = 'HHHH', bestScore = 0;
-  Object.entries(PERSONALITY_PATTERNS).forEach(([p, t]) => {
-    if (t === 'HHHH') return; // 跳过傻乐者兜底
+  // 2. Hamming距离最近匹配（5维模型中找最近）
+  let bestType = 'OJBK', bestScore = 0;
+  Object.entries(TYPE_PATTERNS).forEach(([p, t]) => {
+    if (p.length !== 5) return; // 跳过长度不对的key
     let match = 0;
-    for (let i = 0; i < 15; i++) {
-      if (pattern[i] === p[i]) match++;
+    for (let i = 0; i < 5; i++) {
+      if (modelPattern[i] === p[i]) match++;
     }
-    const score = match / 15;
-    if (score > bestScore) { bestScore = score; bestType = t; }
+    const score = match / 5;
+    if (score > bestScore || (score === bestScore && t !== 'HHHH')) {
+      bestScore = score;
+      bestType = t;
+    }
   });
 
-  // 3. 匹配度 < 60% → 傻乐者
-  if (bestScore < 0.6) return { type: 'HHHH', pattern, exact: false, matchRate: bestScore };
+  // 3. 极低匹配 → 傻乐者
+  if (bestScore < 0.4) return { type: 'HHHH', pattern: dimPattern, modelPattern, exact: false, matchRate: bestScore };
 
-  return { type: bestType, pattern, exact: false, matchRate: bestScore };
+  return { type: bestType, pattern: dimPattern, modelPattern, exact: false, matchRate: bestScore };
 }
 
 // =============================================
@@ -1150,6 +1357,15 @@ async function refreshOwnerVotes() {
   document.getElementById('stat-friends').textContent = total;
   document.getElementById('stat-paid').textContent = STATE.ownerData.paidCount || 0;
 
+  // 统计待确认数量，加 badge 提醒
+  const pendingCount = friends.filter(f => f.payPending && !f.paid).length;
+  const paidLabel = document.querySelector('#stat-paid')?.closest('.stat-card')?.querySelector('.stat-label');
+  if (paidLabel) {
+    paidLabel.innerHTML = pendingCount > 0
+      ? `已付费解锁 <span class="confirm-badge">+${pendingCount}待确认</span>`
+      : '已付费解锁';
+  }
+
   if (total === 0) {
     document.getElementById('stat-agree').textContent = '—';
     document.getElementById('stat-type').textContent = '—';
@@ -1163,8 +1379,9 @@ async function refreshOwnerVotes() {
   }
 
   // 好友参与情况列表
+  // f.answers = 好友猜发起者的选择 → 当作"发起者答案"跑算法 = 好友眼中发起者的类型
   const friendsHtml = friends.map((f, fi) => {
-    const r = calcSBTIType(f.answers);
+    const r = calcSBTIType(f.answers); // 好友眼中发起者的类型
     const matchPct = Math.round(f.answers.filter((a, i) => a === myAnswers[i]).length / myAnswers.length * 100);
     return `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
@@ -1176,7 +1393,11 @@ async function refreshOwnerVotes() {
           <div style="font-size:12px;color:var(--sub)">猜测：${r.type} ${TYPE_INFO[r.type]?.emoji || ''} · 吻合率 ${matchPct}%</div>
         </div>
         <div style="flex-shrink:0">
-          ${f.paid ? '<span style="background:#fef3c7;color:#d97706;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">💰 已付费</span>' : '<span style="background:#f1f5f9;color:var(--sub);padding:4px 10px;border-radius:20px;font-size:12px">待解锁</span>'}
+          ${f.paid
+            ? '<span style="background:#fef3c7;color:#d97706;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">💰 已付费</span>'
+            : f.payPending
+              ? `<div style="text-align:center"><span style="background:#fef9c3;color:#b45309;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">⏳ 待确认</span><br><button class="confirm-btn" onclick="ownerConfirmPay('${STATE.ownerUid}','${f.name}')">确认收款</button></div>`
+              : '<span style="background:#f1f5f9;color:var(--sub);padding:4px 10px;border-radius:20px;font-size:12px">待解锁</span>'}
         </div>
       </div>`;
   }).join('');
@@ -1200,16 +1421,50 @@ async function refreshOwnerVotes() {
   const avgMatch = Math.round(totalMatch / total * 100);
   document.getElementById('stat-agree').textContent = avgMatch + '%';
 
-  // 朋友们眼中发起者的类型（用SBTI算法）
+  // 朋友们眼中发起者的类型 = 用每个朋友的猜测算出的SBTI类型，取众数
   const typeCounts = {};
   friends.forEach(f => {
-    const r = calcSBTIType(f.answers);
+    const r = calcSBTIType(f.answers); // 用朋友猜测的答案算"他们眼中的你"
     typeCounts[r.type] = (typeCounts[r.type]||0) + 1;
   });
   const topType = Object.entries(typeCounts).sort((a,b) => b[1]-a[1])[0][0];
   const topTypeInfo = TYPE_INFO[topType] || { emoji: '🤔', desc: '' };
   document.getElementById('stat-type').textContent = topType;
-  document.getElementById('stat-type').title = topTypeInfo.desc;
+  document.getElementById('stat-type').title = `${topTypeInfo.emoji} ${topTypeInfo.desc}（朋友眼中你最多的类型）`;
+
+  // 展示"朋友眼中我"详情卡片
+  const friendTypeSection = document.getElementById('friend-type-section');
+  const allTypes = Object.entries(typeCounts).sort((a,b) => b[1]-a[1]);
+  if (friendTypeSection) {
+    friendTypeSection.style.display = 'block';
+    const typeListHtml = allTypes.map(([type, cnt]) => {
+      const info = TYPE_INFO[type] || { emoji: '🤔', desc: '' };
+      const pct = Math.round(cnt / total * 100);
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:14px;margin-bottom:10px;box-shadow:var(--shadow)">
+          <div style="font-size:32px;flex-shrink:0">${info.emoji}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:800;color:var(--blue)">${type}</div>
+            <div style="font-size:12px;color:var(--sub);margin-top:2px">${info.desc}</div>
+            <div style="height:6px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:var(--grad);border-radius:3px;transition:width .8s"></div>
+            </div>
+          </div>
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:18px;font-weight:800;color:var(--text)">${cnt}人</div>
+            <div style="font-size:11px;color:var(--sub)">${pct}%</div>
+          </div>
+        </div>`;
+    }).join('');
+    document.getElementById('friend-perceived-type-card').innerHTML = `
+      <div style="background:linear-gradient(135deg,#f0f4ff,#f5f0ff);border-radius:16px;padding:16px;margin-bottom:12px;text-align:center">
+        <div style="font-size:13px;color:var(--sub);margin-bottom:4px">朋友们最多认为你是</div>
+        <div style="font-size:28px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${topType} ${topTypeInfo.emoji}</div>
+        <div style="font-size:13px;color:var(--sub);margin-top:4px">${topTypeInfo.desc}</div>
+      </div>
+      ${typeListHtml}
+    `;
+  }
 
   // 每道题投票详情（3选项）
   const AVATAR_COLORS = ['#4e6ef2','#0abfbc','#a855f7','#f472b6','#fb923c','#059669'];
@@ -1281,6 +1536,18 @@ function toggleDetailSection() {
   const btn = section ? section.querySelector('button') : null;
   if (section) section.style.display = detailExpanded ? 'block' : 'none';
   if (btn) btn.textContent = detailExpanded ? '收起 ↑' : '展开 ↓';
+}
+
+// 发起者确认某好友收款
+async function ownerConfirmPay(ownerUid, friendName) {
+  if (!confirm(`确认 ${friendName} 已转账？`)) return;
+  try {
+    await apiPost('/api/confirm-pay', { ownerUid, friendName });
+    showToast(`✅ 已确认 ${friendName} 的收款，对方将自动解锁`);
+    refreshOwnerVotes(); // 刷新列表
+  } catch(e) {
+    showToast('确认失败，请重试');
+  }
 }
 
 function expandDetail() {
@@ -1585,8 +1852,17 @@ function renderFriendDone(ownerData, friendRecord) {
         </div>
       </div>
       <button class="paywall-btn" id="pay-btn" onclick="handlePay('${ownerName}','${perceivedType}')">
-        💰 支付 ¥0.1 解锁查看
+        💰 扫码转账 ¥0.1 解锁
       </button>
+    </div>
+    <!-- 待确认状态 -->
+    <div class="pending-unlock" id="pending-section" style="display:none">
+      <div style="font-size:36px;margin-bottom:8px">⏳</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:6px">转账待确认</div>
+      <div style="font-size:13px;color:var(--sub);line-height:1.5">
+        已记录你的转账申请，等 <strong>${ownerName}</strong> 确认收款后自动解锁<br>
+        <span style="font-size:11px;color:#94a3b8">页面每30秒自动刷新状态</span>
+      </div>
     </div>
     <div class="paywall-unlocked" id="unlocked-section" style="display:none">
       <div class="unlocked-emoji">${perceivedTypeInfo.emoji}</div>
@@ -1605,33 +1881,110 @@ function renderFriendDone(ownerData, friendRecord) {
 }
 
 // =============================================
-// 付费解锁
+// 付费解锁（扫码转账 + 发起者手动确认）
 // =============================================
-let payInProgress = false;
+
+// ⚠️ 将这里换成你自己的收款码图片 URL
+// 可以把图片上传到 GitHub 仓库后用 raw.githubusercontent.com 地址
+const QR_CODE_URL = 'https://raw.githubusercontent.com/981322049-del/sbti-friends/main/qrcode.png';
+const PAY_AMOUNT  = '0.1';
+
+let payInProgress  = false;
+let pollTimer      = null;
+
 function handlePay(ownerName, perceivedType) {
   if (payInProgress) return;
-  const btn = document.getElementById('pay-btn');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ 正在拉起支付...';
   payInProgress = true;
 
-  // 调用服务端记录付费
+  // 生成订单号（8位随机）
+  const orderId = 'SB' + Math.random().toString(36).slice(2, 8).toUpperCase();
+
+  // 显示扫码弹窗
+  const overlay = document.createElement('div');
+  overlay.className = 'qr-modal-overlay';
+  overlay.id = 'qr-overlay';
+  overlay.innerHTML = `
+    <div class="qr-modal">
+      <h3>💰 扫码转账解锁</h3>
+      <p>转账 <strong>¥${PAY_AMOUNT}</strong> 给发起者<br>转账备注写上下方订单号</p>
+      <img class="qr-img" src="${QR_CODE_URL}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22180%22><rect width=%22180%22 height=%22180%22 fill=%22%23f1f5f9%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.35em%22 font-size=%2213%22 fill=%22%2394a3b8%22>收款码占位</text></svg>'" alt="收款码">
+      <div class="qr-order">订单号：${orderId}</div>
+      <p style="font-size:12px;color:#f59e0b;margin-bottom:12px">⚡ 转账后点「我已转账」，等对方确认即可解锁</p>
+      <div class="qr-actions">
+        <button class="qr-cancel" onclick="closeQrModal()">取消</button>
+        <button class="qr-confirm" onclick="confirmTransfer('${ownerName}','${perceivedType}','${orderId}')">我已转账 ✓</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function closeQrModal() {
+  const el = document.getElementById('qr-overlay');
+  if (el) el.remove();
+  payInProgress = false;
+}
+
+function confirmTransfer(ownerName, perceivedType, orderId) {
+  const overlay = document.getElementById('qr-overlay');
+  if (overlay) overlay.remove();
+
+  // 提交"待确认"支付请求
+  const btn = document.getElementById('pay-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 提交中...'; }
+
   apiPost('/api/pay', {
-    ownerUid: STATE.friendOwnerId,
+    ownerUid:   STATE.friendOwnerId,
     friendName: STATE.friendName,
     friendType: perceivedType,
+    orderId,
+    status: 'pending',   // 待确认
   }).then(() => {
-    showToast('支付成功！🎉');
-    document.getElementById('paywall-section').style.display = 'none';
-    const unlocked = document.getElementById('unlocked-section');
-    unlocked.style.display = 'block';
+    // 切到"待确认"状态
+    const paywallSection = document.getElementById('paywall-section');
+    const pendingSection = document.getElementById('pending-section');
+    if (paywallSection) paywallSection.style.display = 'none';
+    if (pendingSection) pendingSection.style.display = 'block';
     payInProgress = false;
-  }).catch(err => {
-    showToast('支付失败，请重试');
-    btn.disabled = false;
-    btn.innerHTML = '💰 支付 ¥0.1 解锁查看';
+    // 开始轮询
+    startPollPaidStatus(perceivedType);
+  }).catch(() => {
+    showToast('提交失败，请重试');
+    if (btn) { btn.disabled = false; btn.innerHTML = '💰 扫码转账 ¥0.1 解锁'; }
     payInProgress = false;
   });
+}
+
+// 轮询：每30秒检查是否已被发起者确认收款
+function startPollPaidStatus(perceivedType) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const data = await apiGet('/api/pay-status', {
+        ownerUid:   STATE.friendOwnerId,
+        friendName: STATE.friendName,
+      });
+      if (data && data.paid) {
+        clearInterval(pollTimer);
+        revealResult(perceivedType);
+      }
+    } catch(e) { /* 网络抖动，忽略 */ }
+  }, 30000);
+}
+
+function revealResult(perceivedType) {
+  const pendingSection = document.getElementById('pending-section');
+  const unlockedSection = document.getElementById('unlocked-section');
+  if (pendingSection) pendingSection.style.display = 'none';
+  if (unlockedSection) unlockedSection.style.display = 'block';
+  showToast('🎉 已解锁！');
+}
+
+// GET 辅助
+async function apiGet(path, params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(qs ? `${path}?${qs}` : path);
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
 }
 
 // =============================================
